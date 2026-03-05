@@ -9,6 +9,20 @@ This document defines the execution plan for the Project Management MVP and acts
 - [ ] Root cause is identified and evidenced before fixes when issues occur.
 - [ ] Scope is kept strictly MVP (no extra features).
 
+## Implemented Design Decisions (through Part 7)
+
+- Runtime architecture: one Dockerized FastAPI app serves API routes under `/api/...` and serves built Next.js static assets at `/`.
+- Auth for MVP: frontend-only hardcoded gate (`user` / `password`) with local session state; backend remains username-driven for future real auth.
+- Persistence model: SQLite with `users` and `boards` tables, with one board per user enforced by `boards.user_id UNIQUE`.
+- Board storage format: full board state is stored as JSON text (`board_json`) for simple MVP read/replace operations.
+- DB bootstrap: schema and DB file are auto-created on startup if missing; default path is `backend/data/pm.db`, override via `DB_PATH`.
+- Board read behavior: `GET /api/users/{username}/board` creates missing user and default board on first access.
+- Board write behavior: `PUT /api/users/{username}/board` accepts full-board replacement payload validated against typed schema.
+- Validation contract: request validation failures are normalized to `422` with `{"error":{"code":"VALIDATION_ERROR","message":"Request validation failed."}}`.
+- Frontend persistence integration: Kanban loads from backend after login and persists rename/add/edit/delete/move actions through API writes.
+- End-to-end strategy: Playwright tests target `http://127.0.0.1:8000` and run against Docker Compose via a wrapper that brings the stack up/down.
+- Test policy refinement: keep coverage target as a guideline, and prefer fewer high-value unit/integration tests over low-value tests written only to raise coverage.
+
 ## Part 1: Planning and Baseline Documentation
 
 ### Checklist
