@@ -41,28 +41,37 @@ docker compose down            # stop
 pm/
   backend/
     app/
-      main.py          -- FastAPI app factory (create_app), all API routes
+      main.py          -- FastAPI app factory (create_app), validation handler, static mount
+      errors.py        -- shared error response helper
       db.py            -- SQLite schema bootstrap and persistence helpers
       board_models.py  -- Pydantic models for board data validation
       board_service.py -- board read/write service logic
       ai_client.py     -- OpenRouter chat completion wrapper (httpx)
       ai_chat.py       -- AI chat processing: system prompt, board-aware message building, JSON response parsing
-    tests/             -- pytest tests
+      routes/
+        health.py      -- GET /api/health, /api/hello
+        board.py       -- GET/PUT /api/users/{username}/board
+        chat.py        -- POST /api/users/{username}/chat + ChatRequest/ChatMessage models
+        ai_test.py     -- POST /api/ai/test
+    tests/
+      conftest.py      -- shared fixtures (client, FIXTURE_DIR, sys.path setup)
+      test_*.py        -- pytest test modules
   frontend/
     src/
       app/             -- Next.js App Router pages (layout, page)
       components/      -- React components: AuthGate, KanbanBoard, KanbanColumn, KanbanCard, ChatSidebar, NewCardForm
       lib/
-        kanban.ts      -- board/card types, seed data, card move logic, ID generation
+        kanban.ts      -- board/card types, card move logic, ID generation
         api.ts         -- backend API client functions
     tests/             -- Playwright e2e specs
-  docs/                -- PLAN.md, RUN.md, BACKEND_API.md, DATABASE.md
+  docs/                -- PLAN.md, RUN.md, BACKEND_API.md, DATABASE.md, code_review.md
   scripts/             -- start/stop server scripts for Mac, Windows, Linux
 ```
 
 ### Key architectural patterns
 
-- **App factory**: `backend/app/main.py:create_app()` accepts optional `frontend_dist_dir` and `db_path` for testing. The module-level `app = create_app()` is the production entry point.
+- **App factory**: `backend/app/main.py:create_app()` accepts optional `frontend_dist_dir` and `db_path` for testing. Stores `db_path` on `app.state` for route access. The module-level `app = create_app()` is the production entry point.
+- **Route modules**: Routes are organized in `app/routes/` as FastAPI `APIRouter` instances, included by the app factory. Each route module accesses the DB path via `request.app.state.db_path`.
 - **Board as JSON blob**: The entire board state (columns + cards) is stored as a single JSON text field in SQLite (`boards.board_json`). One board per user, enforced by `UNIQUE` constraint on `user_id`.
 - **AI chat flow**: `POST /api/users/{username}/chat` -> loads board -> `process_chat()` builds messages with system prompt + board state + history -> calls OpenRouter -> parses JSON response -> optionally saves updated board.
 - **Frontend static export**: Next.js builds to `frontend/out/`, copied to `backend/frontend_dist/` in Docker. FastAPI mounts it as static files at `/`.

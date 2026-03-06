@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 
 class TestChatEndpoint:
-    @patch("app.main.process_chat")
+    @patch("app.routes.chat.process_chat")
     def test_chat_only_response(self, mock_process, client: TestClient):
         from app.ai_chat import ChatResult
         mock_process.return_value = ChatResult(reply="Hello!", board_updated=False)
@@ -16,8 +16,8 @@ class TestChatEndpoint:
         assert body["reply"] == "Hello!"
         assert body["board_updated"] is False
 
-    @patch("app.main.save_board_for_user")
-    @patch("app.main.process_chat")
+    @patch("app.routes.chat.save_board_for_user")
+    @patch("app.routes.chat.process_chat")
     def test_chat_with_board_update_saves(self, mock_process, mock_save, client: TestClient):
         from app.ai_chat import ChatResult
         from app.board_models import BoardData
@@ -45,7 +45,7 @@ class TestChatEndpoint:
         response = client.post("/api/users/user/chat", json={})
         assert response.status_code == 422
 
-    @patch("app.main.process_chat")
+    @patch("app.routes.chat.process_chat")
     def test_ai_error_returns_502(self, mock_process, client: TestClient):
         mock_process.side_effect = RuntimeError("API down")
 
@@ -54,7 +54,7 @@ class TestChatEndpoint:
         assert response.status_code == 502
         assert response.json()["error"]["code"] == "AI_ERROR"
 
-    @patch("app.main.process_chat")
+    @patch("app.routes.chat.process_chat")
     def test_passes_history(self, mock_process, client: TestClient):
         from app.ai_chat import ChatResult
         mock_process.return_value = ChatResult(reply="ok", board_updated=False)

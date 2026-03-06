@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 
 class TestAiTestRoute:
-    @patch("app.main.chat_completion")
+    @patch("app.routes.ai_test.chat_completion")
     def test_returns_ai_result(self, mock_chat, client: TestClient):
         mock_chat.return_value = "4"
 
@@ -14,7 +14,7 @@ class TestAiTestRoute:
         assert response.json() == {"result": "4"}
         mock_chat.assert_called_once()
 
-    @patch("app.main.chat_completion")
+    @patch("app.routes.ai_test.chat_completion")
     def test_uses_default_prompt(self, mock_chat, client: TestClient):
         mock_chat.return_value = "4"
 
@@ -24,7 +24,7 @@ class TestAiTestRoute:
         call_args = mock_chat.call_args
         assert "2+2" in call_args.kwargs["messages"][0]["content"]
 
-    @patch("app.main.chat_completion")
+    @patch("app.routes.ai_test.chat_completion")
     def test_returns_502_on_ai_failure(self, mock_chat, client: TestClient):
         mock_chat.side_effect = RuntimeError("OPENROUTER_API_KEY is not set")
 
