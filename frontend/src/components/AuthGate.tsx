@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
+import { ChatSidebar } from "@/components/ChatSidebar";
 import { KanbanBoard } from "@/components/KanbanBoard";
 
 const AUTH_STORAGE_KEY = "pm-authenticated";
@@ -29,6 +30,11 @@ export const AuthGate = () => {
     }
     setErrorMessage("Invalid credentials. Use user / password.");
   };
+
+  const [refreshSignal, setRefreshSignal] = useState(0);
+  const handleBoardUpdated = useCallback(() => {
+    setRefreshSignal((n) => n + 1);
+  }, []);
 
   const handleLogout = () => {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
@@ -101,17 +107,22 @@ export const AuthGate = () => {
   }
 
   return (
-    <div className="relative">
-      <div className="absolute right-6 top-6 z-20">
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="rounded-full border border-[var(--stroke)] bg-white/85 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--navy-dark)] shadow-[var(--shadow)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
-        >
-          Log out
-        </button>
+    <div className="relative flex min-h-screen">
+      <div className="flex-1">
+        <div className="absolute right-[370px] top-6 z-20">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="rounded-full border border-[var(--stroke)] bg-white/85 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--navy-dark)] shadow-[var(--shadow)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+          >
+            Log out
+          </button>
+        </div>
+        <KanbanBoard username={VALID_USERNAME} refreshSignal={refreshSignal} />
       </div>
-      <KanbanBoard username={VALID_USERNAME} />
+      <div className="sticky top-0 h-screen w-[350px] shrink-0 p-4">
+        <ChatSidebar username={VALID_USERNAME} onBoardUpdated={handleBoardUpdated} />
+      </div>
     </div>
   );
 };

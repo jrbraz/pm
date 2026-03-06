@@ -22,6 +22,9 @@ This document defines the execution plan for the Project Management MVP and acts
 - Frontend persistence integration: Kanban loads from backend after login and persists rename/add/edit/delete/move actions through API writes.
 - End-to-end strategy: Playwright tests target `http://127.0.0.1:8000` and run against Docker Compose via a wrapper that brings the stack up/down.
 - Test policy refinement: keep coverage target as a guideline, and prefer fewer high-value unit/integration tests over low-value tests written only to raise coverage.
+- AI connectivity: backend uses `httpx` to call OpenRouter's OpenAI-compatible API directly at `https://openrouter.ai/api/v1/chat/completions`; API key read from `OPENROUTER_API_KEY` or `openrouter_api_key` env var; `.env` passed to container via `env_file` in `docker-compose.yml`.
+- AI chat contract: `POST /api/users/{username}/chat` accepts `{"message": "...", "history": [...]}`, sends board + history + message to model, expects JSON `{"reply": "...", "board_update": null | BoardData}`. Board updates are validated against `BoardData` schema (including card reference checks) before saving. Invalid model output raises an error to the caller.
+- Sidebar chat UI: `ChatSidebar` component renders alongside `KanbanBoard` in a flex layout within `AuthGate`. Conversation history is kept in component state. When the AI updates the board (`board_updated: true`), a `refreshSignal` prop triggers `KanbanBoard` to re-fetch from the backend.
 
 ## Part 1: Planning and Baseline Documentation
 
@@ -151,14 +154,14 @@ This document defines the execution plan for the Project Management MVP and acts
 ## Part 8: OpenRouter Connectivity
 
 ### Checklist
-- [ ] Add backend OpenRouter client using `OPENROUTER_API_KEY` and model `openai/gpt-oss-120b`.
-- [ ] Create a minimal internal test route/service call to validate connectivity.
-- [ ] Keep request/response logging safe (no key leakage).
+- [x] Add backend OpenRouter client using `OPENROUTER_API_KEY` and model `openai/gpt-oss-120b`.
+- [x] Create a minimal internal test route/service call to validate connectivity.
+- [x] Keep request/response logging safe (no key leakage).
 
 ### Tests
-- [ ] Unit tests for AI client request composition and response parsing (with mocks).
-- [ ] Integration smoke test for `2+2` prompt round trip.
-- [ ] Coverage is reviewed for touched backend code (target ~80% when sensible).
+- [x] Unit tests for AI client request composition and response parsing (with mocks).
+- [x] Integration smoke test for `2+2` prompt round trip.
+- [x] Coverage is reviewed for touched backend code (target ~80% when sensible).
 
 ### Success Criteria
 - Backend can successfully call OpenRouter with configured model.
@@ -168,15 +171,15 @@ This document defines the execution plan for the Project Management MVP and acts
 ## Part 9: Structured AI Board Operations
 
 ### Checklist
-- [ ] Define structured output schema for chat response and optional board update.
-- [ ] Send current board JSON + user message + history to model.
-- [ ] Validate model output against schema before applying updates.
-- [ ] Apply accepted board updates transactionally to DB.
+- [x] Define structured output schema for chat response and optional board update.
+- [x] Send current board JSON + user message + history to model.
+- [x] Validate model output against schema before applying updates.
+- [x] Apply accepted board updates transactionally to DB.
 
 ### Tests
-- [ ] Unit tests for schema validation and board patch application.
-- [ ] Integration tests for: chat-only response, response with board update, invalid model payload handling.
-- [ ] Coverage is reviewed for touched backend code (target ~80% when sensible).
+- [x] Unit tests for schema validation and board patch application.
+- [x] Integration tests for: chat-only response, response with board update, invalid model payload handling.
+- [x] Coverage is reviewed for touched backend code (target ~80% when sensible).
 
 ### Success Criteria
 - AI responses are parsed deterministically.
@@ -186,15 +189,15 @@ This document defines the execution plan for the Project Management MVP and acts
 ## Part 10: Sidebar AI Chat UI
 
 ### Checklist
-- [ ] Add sidebar chat UI integrated with backend AI endpoint.
-- [ ] Show conversation history and pending states.
-- [ ] Refresh board automatically after AI-applied updates.
-- [ ] Keep UI aligned to project color scheme and existing style direction.
+- [x] Add sidebar chat UI integrated with backend AI endpoint.
+- [x] Show conversation history and pending states.
+- [x] Refresh board automatically after AI-applied updates.
+- [x] Keep UI aligned to project color scheme and existing style direction.
 
 ### Tests
-- [ ] Frontend unit tests for chat components and state transitions.
+- [x] Frontend unit tests for chat components and state transitions.
 - [ ] End-to-end integration tests for chat send/receive and AI-driven board update rendering.
-- [ ] Coverage is reviewed for touched frontend code (target ~80% when sensible).
+- [x] Coverage is reviewed for touched frontend code (target ~80% when sensible).
 
 ### Success Criteria
 - User can chat from sidebar and receive AI responses.

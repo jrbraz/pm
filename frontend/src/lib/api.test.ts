@@ -1,4 +1,4 @@
-import { fetchBoard, saveBoard } from "@/lib/api";
+import { fetchBoard, saveBoard, sendChat } from "@/lib/api";
 import { initialData } from "@/lib/kanban";
 
 const jsonResponse = (body: unknown, status = 200) =>
@@ -56,5 +56,52 @@ describe("board API client", () => {
     await expect(fetchBoard("user")).rejects.toThrow(
       "Request validation failed."
     );
+  });
+});
+
+describe("chat API client", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("sendChat posts message and returns response", async () => {
+    const chatResponse = { reply: "Hello!", board_updated: false };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse(chatResponse)
+    );
+
+    const result = await sendChat("user", "hi", []);
+
+    expect(result).toEqual(chatResponse);
+    expect(globalThis.fetch).toHaveBeenCalledWith("/api/users/user/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "hi", history: [] }),
+    });
+  });
+
+  it("sendChat includes history in request", async () => {
+    const history = [
+      { role: "user" as const, content: "hi" },
+      { role: "assistant" as const, content: "hello" },
+    ];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({ reply: "ok", board_updated: false })
+    );
+
+    await sendChat("user", "next", history);
+
+    const body = JSON.parse(
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body
+    );
+    expect(body.history).toEqual(history);
+  });
+
+  it("sendChat throws on error response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({ error: { code: "AI_ERROR", message: "API down" } }, 502)
+    );
+
+    await expect(sendChat("user", "hi", [])).rejects.toThrow("API down");
   });
 });

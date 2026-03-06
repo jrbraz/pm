@@ -18,9 +18,10 @@ import { createId, moveCard, type BoardData } from "@/lib/kanban";
 
 type KanbanBoardProps = {
   username: string;
+  refreshSignal?: number;
 };
 
-export const KanbanBoard = ({ username }: KanbanBoardProps) => {
+export const KanbanBoard = ({ username, refreshSignal }: KanbanBoardProps) => {
   const [board, setBoard] = useState<BoardData | null>(null);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,6 +50,12 @@ export const KanbanBoard = ({ username }: KanbanBoardProps) => {
   useEffect(() => {
     void loadBoard();
   }, [loadBoard]);
+
+  useEffect(() => {
+    if (refreshSignal) {
+      void loadBoard();
+    }
+  }, [refreshSignal, loadBoard]);
 
   const persistBoard = useCallback(
     async (nextBoard: BoardData) => {

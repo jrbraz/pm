@@ -5,8 +5,21 @@ type BoardPayload = {
   board: BoardData;
 };
 
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+type ChatResponse = {
+  reply: string;
+  board_updated: boolean;
+};
+
 const boardEndpoint = (username: string) =>
   `/api/users/${encodeURIComponent(username)}/board`;
+
+const chatEndpoint = (username: string) =>
+  `/api/users/${encodeURIComponent(username)}/chat`;
 
 const parseErrorMessage = async (response: Response) => {
   try {
@@ -47,4 +60,22 @@ export const saveBoard = async (
 
   const data = (await response.json()) as BoardPayload;
   return data.board;
+};
+
+export const sendChat = async (
+  username: string,
+  message: string,
+  history: ChatMessage[]
+): Promise<ChatResponse> => {
+  const response = await fetch(chatEndpoint(username), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, history }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  return (await response.json()) as ChatResponse;
 };

@@ -6,6 +6,10 @@ vi.mock("@/components/KanbanBoard", () => ({
   KanbanBoard: () => <div data-testid="kanban-board">Board</div>,
 }));
 
+vi.mock("@/components/ChatSidebar", () => ({
+  ChatSidebar: () => <div data-testid="chat-sidebar">Chat</div>,
+}));
+
 describe("AuthGate", () => {
   beforeEach(() => {
     window.localStorage.clear();
