@@ -1,13 +1,9 @@
-import sys
-from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 import httpx
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from app.ai_client import chat_completion, _get_api_key
+from app.ai_client import chat_completion, get_api_key
 
 
 def _mock_response(content: str) -> MagicMock:
@@ -24,18 +20,18 @@ class TestGetApiKey:
     def test_reads_uppercase_env(self, monkeypatch):
         monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test-upper")
         monkeypatch.delenv("openrouter_api_key", raising=False)
-        assert _get_api_key() == "sk-test-upper"
+        assert get_api_key() == "sk-test-upper"
 
     def test_reads_lowercase_env(self, monkeypatch):
         monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
         monkeypatch.setenv("openrouter_api_key", "sk-test-lower")
-        assert _get_api_key() == "sk-test-lower"
+        assert get_api_key() == "sk-test-lower"
 
     def test_raises_when_missing(self, monkeypatch):
         monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
         monkeypatch.delenv("openrouter_api_key", raising=False)
         with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY is not set"):
-            _get_api_key()
+            get_api_key()
 
 
 class TestChatCompletion:

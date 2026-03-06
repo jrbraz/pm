@@ -108,8 +108,8 @@ export const AuthGate = () => {
 
   return (
     <div className="relative flex min-h-screen">
-      <div className="flex-1">
-        <div className="absolute right-[370px] top-6 z-20">
+      <div className="relative flex-1">
+        <div className="absolute right-6 top-6 z-20">
           <button
             type="button"
             onClick={handleLogout}

@@ -1,11 +1,7 @@
 import json
-import sys
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.ai_chat import (
     AiChatResponse,
@@ -45,6 +41,18 @@ class TestBuildMessages:
         assert messages[2] == {"role": "user", "content": "hi"}
         assert messages[3] == {"role": "assistant", "content": "hello"}
         assert messages[4] == {"role": "user", "content": "what next?"}
+
+    def test_truncates_long_history(self):
+        from app.ai_chat import MAX_HISTORY_MESSAGES
+
+        board = _minimal_board()
+        history = [{"role": "user", "content": f"msg-{i}"} for i in range(30)]
+        messages = build_messages(board, "latest", history)
+
+        # 2 system + MAX_HISTORY_MESSAGES history + 1 user
+        assert len(messages) == 2 + MAX_HISTORY_MESSAGES + 1
+        assert messages[2]["content"] == f"msg-{30 - MAX_HISTORY_MESSAGES}"
+        assert messages[-1]["content"] == "latest"
 
 
 class TestParseAiResponse:

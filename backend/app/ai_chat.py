@@ -46,6 +46,9 @@ class ChatResult(BaseModel):
     board: BoardData | None = None
 
 
+MAX_HISTORY_MESSAGES = 20
+
+
 def build_messages(
     board: BoardData,
     user_message: str,
@@ -55,7 +58,8 @@ def build_messages(
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "system", "content": f"Current board state:\n{board.model_dump_json()}"},
     ]
-    messages.extend(history)
+    trimmed_history = history[-MAX_HISTORY_MESSAGES:]
+    messages.extend(trimmed_history)
     messages.append({"role": "user", "content": user_message})
     return messages
 

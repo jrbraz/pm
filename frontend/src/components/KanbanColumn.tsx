@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -21,6 +22,28 @@ export const KanbanColumn = ({
   onDeleteCard,
 }: KanbanColumnProps) => {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
+  const [localTitle, setLocalTitle] = useState(column.title);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setLocalTitle(column.title);
+  }, [column.title]);
+
+  const handleTitleChange = useCallback(
+    (value: string) => {
+      setLocalTitle(value);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        onRename(column.id, value);
+      }, 400);
+    },
+    [column.id, onRename]
+  );
+
+  const handleTitleBlur = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    onRename(column.id, localTitle);
+  }, [column.id, localTitle, onRename]);
 
   return (
     <section
@@ -40,8 +63,9 @@ export const KanbanColumn = ({
             </span>
           </div>
           <input
-            value={column.title}
-            onChange={(event) => onRename(column.id, event.target.value)}
+            value={localTitle}
+            onChange={(event) => handleTitleChange(event.target.value)}
+            onBlur={handleTitleBlur}
             className="mt-3 w-full bg-transparent font-display text-lg font-semibold text-[var(--navy-dark)] outline-none"
             aria-label="Column title"
           />

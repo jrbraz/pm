@@ -1,5 +1,14 @@
 import { fetchBoard, saveBoard, sendChat } from "@/lib/api";
-import { initialData } from "@/lib/kanban";
+import type { BoardData } from "@/lib/kanban";
+
+const testBoard: BoardData = {
+  columns: [
+    { id: "col-backlog", title: "Backlog", cardIds: ["card-1"] },
+  ],
+  cards: {
+    "card-1": { id: "card-1", title: "Task", details: "Details" },
+  },
+};
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -14,12 +23,12 @@ describe("board API client", () => {
 
   it("fetchBoard returns board payload", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      jsonResponse({ username: "user", board: initialData })
+      jsonResponse({ username: "user", board: testBoard })
     );
 
     const board = await fetchBoard("user");
 
-    expect(board).toEqual(initialData);
+    expect(board).toEqual(testBoard);
     expect(globalThis.fetch).toHaveBeenCalledWith("/api/users/user/board", {
       cache: "no-store",
     });
@@ -27,16 +36,16 @@ describe("board API client", () => {
 
   it("saveBoard sends put request and returns saved board", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      jsonResponse({ username: "user", board: initialData })
+      jsonResponse({ username: "user", board: testBoard })
     );
 
-    const board = await saveBoard("user", initialData);
+    const board = await saveBoard("user", testBoard);
 
-    expect(board).toEqual(initialData);
+    expect(board).toEqual(testBoard);
     expect(globalThis.fetch).toHaveBeenCalledWith("/api/users/user/board", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(initialData),
+      body: JSON.stringify(testBoard),
     });
   });
 

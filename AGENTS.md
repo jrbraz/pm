@@ -15,7 +15,9 @@ For the MVP, there will only be a user sign in (hardcoded to 'user' and 'passwor
 
 For the MVP, there will only be 1 Kanban board per signed in user.
 
-For the MVP, this will run locally (in a docker container)
+For the MVP, this will run locally (in a docker container).
+
+SECURITY NOTE: The backend API has no authentication. Any client that can reach the API can read or write any user's board by knowing/guessing their username. This is acceptable for local-only MVP use but must be addressed before any network-exposed or multi-user deployment.
 
 ## Technical Decisions
 

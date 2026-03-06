@@ -7,12 +7,8 @@ Run: python3 -m pytest tests/test_ai_smoke.py -v
 """
 
 import os
-import sys
-from pathlib import Path
 
 import pytest
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.ai_client import chat_completion
 

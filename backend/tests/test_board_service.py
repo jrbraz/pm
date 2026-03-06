@@ -1,8 +1,4 @@
-import sys
 from pathlib import Path
-
-# Ensure imports work both locally and in containerized test runs.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.board_models import BoardData
 from app.board_service import get_or_create_board_for_user, save_board_for_user

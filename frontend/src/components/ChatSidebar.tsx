@@ -3,13 +3,18 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { sendChat, type ChatMessage } from "@/lib/api";
 
+type DisplayMessage = ChatMessage & { id: string };
+
+let nextMsgId = 0;
+const msgId = () => `msg-${++nextMsgId}`;
+
 type ChatSidebarProps = {
   username: string;
   onBoardUpdated: () => void;
 };
 
 export const ChatSidebar = ({ username, onBoardUpdated }: ChatSidebarProps) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +30,7 @@ export const ChatSidebar = ({ username, onBoardUpdated }: ChatSidebarProps) => {
       const trimmed = input.trim();
       if (!trimmed || isSending) return;
 
-      const userMessage: ChatMessage = { role: "user", content: trimmed };
+      const userMessage: DisplayMessage = { id: msgId(), role: "user", content: trimmed };
       const updatedHistory = [...messages, userMessage];
       setMessages(updatedHistory);
       setInput("");
@@ -34,7 +39,8 @@ export const ChatSidebar = ({ username, onBoardUpdated }: ChatSidebarProps) => {
 
       try {
         const response = await sendChat(username, trimmed, messages);
-        const assistantMessage: ChatMessage = {
+        const assistantMessage: DisplayMessage = {
+          id: msgId(),
           role: "assistant",
           content: response.reply,
         };
@@ -72,9 +78,9 @@ export const ChatSidebar = ({ username, onBoardUpdated }: ChatSidebarProps) => {
           </p>
         ) : null}
 
-        {messages.map((msg, i) => (
+        {messages.map((msg) => (
           <div
-            key={i}
+            key={msg.id}
             className={`mb-3 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div

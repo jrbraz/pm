@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -73,16 +73,16 @@ export const KanbanBoard = ({ username, refreshSignal }: KanbanBoardProps) => {
     [username]
   );
 
+  const boardRef = useRef(board);
+  boardRef.current = board;
+
   const applyBoardUpdate = useCallback(
     (updateFn: (currentBoard: BoardData) => BoardData) => {
-      setBoard((currentBoard) => {
-        if (!currentBoard) {
-          return currentBoard;
-        }
-        const nextBoard = updateFn(currentBoard);
-        void persistBoard(nextBoard);
-        return nextBoard;
-      });
+      const currentBoard = boardRef.current;
+      if (!currentBoard) return;
+      const nextBoard = updateFn(currentBoard);
+      setBoard(nextBoard);
+      void persistBoard(nextBoard);
     },
     [persistBoard]
   );

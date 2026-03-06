@@ -1,16 +1,29 @@
+import json
 import os
 from pathlib import Path
 
+import httpx
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, ValidationError
 
 from app.ai_chat import process_chat, ChatResult
 from app.ai_client import chat_completion
 from app.board_models import BoardData, BoardResponse
 from app.board_service import get_or_create_board_for_user, save_board_for_user
 from app.db import DEFAULT_DB_PATH, initialize_database
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    history: list[ChatMessage] = []
 
 
 def _resolve_frontend_dist_dir() -> Path:
@@ -63,24 +76,23 @@ def create_app(frontend_dist_dir: Path | None = None, db_path: Path | None = Non
         return BoardResponse(username=username, board=saved_board)
 
     @app.post("/api/users/{username}/chat")
-    def chat(username: str, payload: dict) -> dict:
-        user_message = payload.get("message", "")
-        history = payload.get("history", [])
-        if not user_message:
+    def chat(username: str, request: ChatRequest) -> dict:
+        if not request.message:
             return JSONResponse(
                 status_code=400,
                 content=_error_payload("VALIDATION_ERROR", "message is required."),
             )
         try:
             board = get_or_create_board_for_user(resolved_db_path, username)
-            result = process_chat(board, user_message, history)
+            history = [m.model_dump() for m in request.history]
+            result = process_chat(board, request.message, history)
             if result.board_updated and result.board is not None:
                 save_board_for_user(resolved_db_path, username, result.board)
             return {
                 "reply": result.reply,
                 "board_updated": result.board_updated,
             }
-        except Exception as exc:
+        except (httpx.HTTPStatusError, json.JSONDecodeError, ValidationError, RuntimeError) as exc:
             return JSONResponse(
                 status_code=502,
                 content=_error_payload("AI_ERROR", str(exc)),
@@ -94,7 +106,7 @@ def create_app(frontend_dist_dir: Path | None = None, db_path: Path | None = Non
                 messages=[{"role": "user", "content": prompt}]
             )
             return {"result": result}
-        except Exception as exc:
+        except (httpx.HTTPStatusError, RuntimeError) as exc:
             return JSONResponse(
                 status_code=502,
                 content=_error_payload("AI_ERROR", str(exc)),

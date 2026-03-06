@@ -14,3 +14,7 @@ frontend/test-results
 frontend/playwright-report
 docs
 scripts
+*.md
+CLAUDE.md
+AGENTS.md
+PROMPTS.md

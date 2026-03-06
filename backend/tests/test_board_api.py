@@ -1,23 +1,7 @@
-import sys
-from pathlib import Path
-
 from fastapi.testclient import TestClient
 
-# Ensure imports work both locally and in containerized test runs.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.main import create_app
-
-
-def _client(tmp_path: Path) -> TestClient:
-    fixture_dir = Path(__file__).resolve().parent / "fixtures" / "frontend_dist"
-    db_path = tmp_path / "pm.db"
-    return TestClient(create_app(frontend_dist_dir=fixture_dir, db_path=db_path))
-
-
-def test_get_board_for_user_returns_default_board(tmp_path: Path) -> None:
-    client = _client(tmp_path)
-
+def test_get_board_for_user_returns_default_board(client: TestClient) -> None:
     response = client.get("/api/users/user/board")
 
     assert response.status_code == 200
@@ -28,8 +12,7 @@ def test_get_board_for_user_returns_default_board(tmp_path: Path) -> None:
     assert body["board"]["cards"]["card-1"]["title"] == "Align roadmap themes"
 
 
-def test_put_board_for_user_persists_and_returns_board(tmp_path: Path) -> None:
-    client = _client(tmp_path)
+def test_put_board_for_user_persists_and_returns_board(client: TestClient) -> None:
     payload = {
         "columns": [
             {"id": "col-backlog", "title": "Backlog", "cardIds": ["card-1"]},
@@ -53,8 +36,7 @@ def test_put_board_for_user_persists_and_returns_board(tmp_path: Path) -> None:
     assert get_response.json()["board"] == payload
 
 
-def test_put_board_rejects_invalid_payload_with_consistent_error(tmp_path: Path) -> None:
-    client = _client(tmp_path)
+def test_put_board_rejects_invalid_payload_with_consistent_error(client: TestClient) -> None:
     invalid_payload = {
         "columns": [{"id": "col-backlog", "title": "Backlog", "cardIds": ["missing"]}],
         "cards": {},

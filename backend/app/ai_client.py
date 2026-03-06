@@ -7,7 +7,7 @@ DEFAULT_MODEL = "openai/gpt-oss-120b"
 TIMEOUT_SECONDS = 60
 
 
-def _get_api_key() -> str:
+def get_api_key() -> str:
     key = os.getenv("OPENROUTER_API_KEY") or os.getenv("openrouter_api_key")
     if not key:
         raise RuntimeError("OPENROUTER_API_KEY is not set")
@@ -20,7 +20,7 @@ def chat_completion(
     api_key: str | None = None,
 ) -> str:
     """Send a chat completion request to OpenRouter and return the assistant message content."""
-    key = api_key or _get_api_key()
+    key = api_key or get_api_key()
 
     response = httpx.post(
         f"{OPENROUTER_BASE_URL}/chat/completions",

@@ -1,12 +1,9 @@
 import sqlite3
-import sys
 from pathlib import Path
-
-# Ensure imports work both locally and in containerized test runs.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.db import get_board_json, get_or_create_user_id, initialize_database, upsert_board_json
 from app.main import create_app
+from tests.conftest import FIXTURE_DIR
 
 
 def test_initialize_database_creates_file_and_tables(tmp_path: Path) -> None:
@@ -42,9 +39,7 @@ def test_persistence_operations_create_user_and_upsert_board(tmp_path: Path) -> 
 
 def test_create_app_bootstraps_database_if_missing(tmp_path: Path) -> None:
     db_path = tmp_path / "newdb" / "pm.db"
-    fixture_dir = Path(__file__).resolve().parent / "fixtures" / "frontend_dist"
-
     assert not db_path.exists()
-    _app = create_app(frontend_dist_dir=fixture_dir, db_path=db_path)
+    _app = create_app(frontend_dist_dir=FIXTURE_DIR, db_path=db_path)
     assert _app is not None
     assert db_path.exists()

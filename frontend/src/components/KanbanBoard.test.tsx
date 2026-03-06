@@ -1,7 +1,25 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KanbanBoard } from "@/components/KanbanBoard";
-import { initialData, type BoardData } from "@/lib/kanban";
+import type { BoardData } from "@/lib/kanban";
+
+const testBoard: BoardData = {
+  columns: [
+    { id: "col-backlog", title: "Backlog", cardIds: ["card-1", "card-2"] },
+    { id: "col-discovery", title: "Discovery", cardIds: ["card-3"] },
+    { id: "col-progress", title: "In Progress", cardIds: ["card-4"] },
+    { id: "col-review", title: "Review", cardIds: ["card-5"] },
+    { id: "col-done", title: "Done", cardIds: ["card-6"] },
+  ],
+  cards: {
+    "card-1": { id: "card-1", title: "Task one", details: "Details" },
+    "card-2": { id: "card-2", title: "Task two", details: "Details" },
+    "card-3": { id: "card-3", title: "Task three", details: "Details" },
+    "card-4": { id: "card-4", title: "Task four", details: "Details" },
+    "card-5": { id: "card-5", title: "Task five", details: "Details" },
+    "card-6": { id: "card-6", title: "Task six", details: "Details" },
+  },
+};
 
 const apiResponse = (board: BoardData) => ({
   username: "user",
@@ -26,9 +44,9 @@ describe("KanbanBoard", () => {
       .spyOn(globalThis, "fetch")
       .mockImplementation((input, init) => {
         if (!init?.method || init.method === "GET") {
-          return okJsonResponse(apiResponse(initialData));
+          return okJsonResponse(apiResponse(testBoard));
         }
-        return okJsonResponse(apiResponse(initialData));
+        return okJsonResponse(apiResponse(testBoard));
       });
 
     render(<KanbanBoard username="user" />);
@@ -45,7 +63,7 @@ describe("KanbanBoard", () => {
       .spyOn(globalThis, "fetch")
       .mockImplementation((input, init) => {
         if (!init?.method || init.method === "GET") {
-          return okJsonResponse(apiResponse(initialData));
+          return okJsonResponse(apiResponse(testBoard));
         }
 
         const updatedBoard = JSON.parse(String(init.body)) as BoardData;
@@ -77,7 +95,7 @@ describe("KanbanBoard", () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response("oops", { status: 500 }))
-      .mockImplementation(() => okJsonResponse(apiResponse(initialData)));
+      .mockImplementation(() => okJsonResponse(apiResponse(testBoard)));
 
     render(<KanbanBoard username="user" />);
 
