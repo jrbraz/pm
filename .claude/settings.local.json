@@ -12,7 +12,19 @@
       "Read(//c/dev-source/pm/$USERPROFILE/.cargo/bin/**)",
       "Bash(uv run pytest --no-header -q)",
       "Bash(powershell.exe -Command \"cd c:\\\\dev-source\\\\pm\\\\backend; uv run pytest --no-header -q 2>&1 | Select-Object -Last 10\")",
-      "Bash(powershell.exe -NoProfile -Command 'Get-Command uv -ErrorAction SilentlyContinue | Format-List Source')"
+      "Bash(powershell.exe -NoProfile -Command 'Get-Command uv -ErrorAction SilentlyContinue | Format-List Source')",
+      "Read(//c/dev-source/pm/$APPDATA/Python/Python314/Scripts/**)",
+      "Read(//c/dev-source/pm/$LOCALAPPDATA/Programs/Python/*/Scripts/**)",
+      "Read(//c/Users/333327/.local/**)",
+      "Read(//c/Users/333327/**)",
+      "Bash(powershell -Command \"Get-Command uv -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(powershell -Command \"where.exe uv\")",
+      "Bash(powershell -Command 'Get-ChildItem -Path \"\"$env:USERPROFILE\"\" -Filter \"\"uv.exe\"\" -Recurse -Depth 4 -ErrorAction SilentlyContinue | Select-Object -First 5 -ExpandProperty FullName')",
+      "Bash(powershell -Command \"irm https://astral.sh/uv/install.ps1 | iex\")",
+      "Bash(export PATH=\"/c/Users/333327/.local/bin:$PATH\")",
+      "Bash(uv run:*)",
+      "Bash(npm run:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File scripts/run-all-tests.ps1)"
     ]
   }
 }

@@ -5,10 +5,14 @@ $rootDir = Split-Path -Parent $PSScriptRoot
 $env:PYTHONIOENCODING = "utf-8"
 $env:NO_COLOR = "1"
 
-# Ensure uv is in PATH (installed via pip/pipx in user Scripts)
-$uvDir = "$env:APPDATA\Python\Python314\Scripts"
-if (Test-Path $uvDir) {
-    $env:PATH = "$uvDir;$env:PATH"
+# Ensure uv is in PATH
+foreach ($uvDir in @(
+    "$env:USERPROFILE\.local\bin",
+    "$env:APPDATA\Python\Python314\Scripts"
+)) {
+    if (Test-Path $uvDir) {
+        $env:PATH = "$uvDir;$env:PATH"
+    }
 }
 
 $backendOut = [System.IO.Path]::GetTempFileName()
@@ -18,8 +22,9 @@ $frontendErr = [System.IO.Path]::GetTempFileName()
 
 Write-Host "=== Running all tests in parallel ==="
 
+# Use -vv and override addopts so pytest lists each test with PASSED/FAILED/SKIPPED
 $backend = Start-Process -FilePath "cmd.exe" `
-    -ArgumentList "/c", "chcp 65001 >nul && uv run pytest --no-header -q" `
+    -ArgumentList "/c", "chcp 65001 >nul && set PATH=$env:PATH && uv run pytest -vv --tb=short --no-header --override-ini=addopts=" `
     -WorkingDirectory "$rootDir\backend" `
     -NoNewWindow -PassThru `
     -RedirectStandardOutput $backendOut `
@@ -64,20 +69,30 @@ $ansiRegex = '\x1b\[[0-9;]*[a-zA-Z]'
 $backendClean = $backendAll -replace $ansiRegex, ''
 $frontendClean = $frontendAll -replace $ansiRegex, ''
 
-# Parse test counts from output
+# Parse test counts from summary lines
+# Backend pytest: "=== 40 passed, 2 skipped in 0.94s ==="
 $backendPassed = 0
 $backendFailed = 0
-if ($backendClean -match "(\d+) passed") { $backendPassed = [int]$Matches[1] }
-if ($backendClean -match "(\d+) failed") { $backendFailed = [int]$Matches[1] }
+foreach ($line in ($backendClean -split "`n")) {
+    if ($line -match "=+\s+(\d+) passed") {
+        $backendPassed = [int]$Matches[1]
+    }
+    if ($line -match "=+\s+(\d+) failed") {
+        $backendFailed = [int]$Matches[1]
+    }
+}
 
+# Vitest: "      Tests  25 passed (25)"
 $frontendUnitPassed = 0
 $frontendUnitFailed = 0
-$frontendE2EPassed = 0
-$frontendE2EFailed = 0
 if ($frontendClean -match "Tests\s+(\d+) passed") { $frontendUnitPassed = [int]$Matches[1] }
 if ($frontendClean -match "Tests\s+(\d+) failed") { $frontendUnitFailed = [int]$Matches[1] }
-if ($frontendClean -match "(\d+) passed \(\d+") { $frontendE2EPassed = [int]$Matches[1] }
-if ($frontendClean -match "(\d+) failed \(\d+") { $frontendE2EFailed = [int]$Matches[1] }
+
+# Playwright: "  6 passed (3.8s)" -- has decimal time, not integer like vitest
+$frontendE2EPassed = 0
+$frontendE2EFailed = 0
+if ($frontendClean -match "(\d+) passed \(\d+\.\d+s\)") { $frontendE2EPassed = [int]$Matches[1] }
+if ($frontendClean -match "(\d+) failed \(\d+\.\d+s\)") { $frontendE2EFailed = [int]$Matches[1] }
 
 $totalPassed = $backendPassed + $frontendUnitPassed + $frontendE2EPassed
 $totalFailed = $backendFailed + $frontendUnitFailed + $frontendE2EFailed
@@ -105,35 +120,73 @@ Write-Host "-------------------------------------------"
 Write-TestLine "Total:                 " $totalPassed $totalFailed
 Write-Host "==========================================="
 
-# List individual tests that ran
-Write-Host ""
-Write-Host "Tests executed:"
-Write-Host ""
+# Build test list from output
+$testList = @()
 
-Write-Host "  Backend (pytest):" -ForegroundColor Cyan
+# Backend: "tests/test_foo.py::TestClass::test_name PASSED [ 5%]"
+# Paths may use / or \ depending on platform
 foreach ($line in ($backendClean -split "`n")) {
-    if ($line -match "^(PASSED|FAILED|ERROR)\s+(.+)" -or $line -match "^(.+)::.+\s+(PASSED|FAILED)") {
-        Write-Host "    $line"
-    } elseif ($line -match "^\s*(\.+|F+|E+)\s*$" -or $line -match "^tests/") {
-        Write-Host "    $line"
+    if ($line -match "^tests[/\\](.+?::.+?)\s+(PASSED|FAILED|SKIPPED)") {
+        $name = $Matches[1]
+        $status = $Matches[2]
+        # Shorten: "test_ai_chat.py::TestBuildMessages::test_includes_history" -> "TestBuildMessages::test_includes_history"
+        $short = $name -replace '^[^:]+::', ''
+        $testList += [PSCustomObject]@{
+            Status = $status
+            Test   = $short
+            Suite  = "Backend (pytest)"
+        }
     }
 }
 
-Write-Host ""
-Write-Host "  Frontend (vitest):" -ForegroundColor Cyan
+# Vitest: lines with checkmark or x, e.g. " ✓ src/lib/kanban.test.ts (3 tests) 4ms"
 foreach ($line in ($frontendClean -split "`n")) {
-    if ($line -match "^\s*(v|x)\s+" -or $line -match "^\s+v\s+" -or $line -match "Test Files\s+\d+") {
-        Write-Host "    $line"
+    if ($line -match "^\s+.\s+(\S+\.test\.\S+)\s+\((\d+) tests?\)") {
+        $file = $Matches[1] -replace '^src/', ''
+        $count = [int]$Matches[2]
+        $status = if ($line -match "^\s+x\s") { "FAILED" } else { "PASSED" }
+        $testList += [PSCustomObject]@{
+            Status = $status
+            Test   = "$file ($count tests)"
+            Suite  = "Frontend (vitest)"
+        }
     }
 }
 
-Write-Host ""
-Write-Host "  Frontend (playwright):" -ForegroundColor Cyan
+# Playwright: "  ok 1 [chromium] › tests\kanban.spec.ts:9:5 › test name (437ms)"
 foreach ($line in ($frontendClean -split "`n")) {
-    if ($line -match "^\s+(\d+)\s+.*\[chromium\]") {
-        Write-Host "    $line"
+    if ($line -match "^\s+(ok|fail)\s+\d+\s+\[chromium\]") {
+        $status = if ($Matches[1] -eq "ok") { "PASSED" } else { "FAILED" }
+        # Extract test name: everything after the last separator (› or >) before the timing
+        $desc = $line -replace '.*\d+:\d+\s+.?\s+', '' -replace '\s+\(\d+ms\)\s*$', ''
+        $desc = $desc.Trim()
+        $testList += [PSCustomObject]@{
+            Status = $status
+            Test   = $desc
+            Suite  = "Frontend (playwright)"
+        }
     }
 }
+
+# Print test list table
+Write-Host ""
+Write-Host "==========================================="
+Write-Host "               TESTS EXECUTED"
+Write-Host "==========================================="
+Write-Host ("{0,-10} {1,-55} {2}" -f "Status", "Test", "Suite")
+Write-Host ("{0,-10} {1,-55} {2}" -f "------", "----", "-----")
+
+foreach ($t in $testList) {
+    $color = switch ($t.Status) {
+        "PASSED"  { "Green" }
+        "FAILED"  { "Red" }
+        "SKIPPED" { "Yellow" }
+        default   { "White" }
+    }
+    Write-Host ("{0,-10}" -f $t.Status) -ForegroundColor $color -NoNewline
+    Write-Host ("{0,-55} {1}" -f $t.Test, $t.Suite)
+}
+Write-Host "==========================================="
 
 $failed = $false
 if ($backendExit -and $backendExit -ne 0) {
