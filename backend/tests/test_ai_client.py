@@ -1,9 +1,14 @@
 from unittest.mock import patch, MagicMock
 
+import os
+import sys
+
 import httpx
 import pytest
 
 from app.ai_client import chat_completion, get_api_key
+
+_WIN = sys.platform == "win32"
 
 
 def _mock_response(content: str) -> MagicMock:
@@ -18,10 +23,13 @@ def _mock_response(content: str) -> MagicMock:
 
 class TestGetApiKey:
     def test_reads_uppercase_env(self, monkeypatch):
+        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+        if not _WIN:
+            monkeypatch.delenv("openrouter_api_key", raising=False)
         monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test-upper")
-        monkeypatch.delenv("openrouter_api_key", raising=False)
         assert get_api_key() == "sk-test-upper"
 
+    @pytest.mark.skipif(_WIN, reason="Windows env vars are case-insensitive")
     def test_reads_lowercase_env(self, monkeypatch):
         monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
         monkeypatch.setenv("openrouter_api_key", "sk-test-lower")
@@ -29,7 +37,8 @@ class TestGetApiKey:
 
     def test_raises_when_missing(self, monkeypatch):
         monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-        monkeypatch.delenv("openrouter_api_key", raising=False)
+        if not _WIN:
+            monkeypatch.delenv("openrouter_api_key", raising=False)
         with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY is not set"):
             get_api_key()
 

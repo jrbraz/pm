@@ -2,7 +2,17 @@
   "permissions": {
     "allow": [
       "Bash(python -m uv sync)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "Bash(chmod +x c:/dev-source/pm/scripts/run-all-tests.sh)",
+      "Bash(where.exe uv)",
+      "Bash(where.exe npm)",
+      "Bash(powershell.exe -Command \"Get-Command uv -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Read(//c/dev-source/pm/$LOCALAPPDATA/uv/**)",
+      "Read(//c/dev-source/pm/$USERPROFILE/.local/bin/**)",
+      "Read(//c/dev-source/pm/$USERPROFILE/.cargo/bin/**)",
+      "Bash(uv run pytest --no-header -q)",
+      "Bash(powershell.exe -Command \"cd c:\\\\dev-source\\\\pm\\\\backend; uv run pytest --no-header -q 2>&1 | Select-Object -Last 10\")",
+      "Bash(powershell.exe -NoProfile -Command 'Get-Command uv -ErrorAction SilentlyContinue | Format-List Source')"
     ]
   }
 }
