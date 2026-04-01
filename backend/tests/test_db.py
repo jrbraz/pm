@@ -14,9 +14,9 @@ def test_initialize_database_creates_file_and_tables(tmp_path: Path) -> None:
     assert db_path.exists()
     with sqlite3.connect(db_path) as connection:
         table_rows = connection.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'boards')"
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('users', 'boards', 'sessions')"
         ).fetchall()
-    assert {row[0] for row in table_rows} == {"users", "boards"}
+    assert {row[0] for row in table_rows} == {"users", "boards", "sessions"}
 
 
 def test_persistence_operations_create_user_and_upsert_board(tmp_path: Path) -> None:

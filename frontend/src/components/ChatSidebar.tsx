@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { sendChat, type ChatMessage } from "@/lib/api";
+import { sendChat, sendChatForBoard, type ChatMessage } from "@/lib/api";
 
 type DisplayMessage = ChatMessage & { id: string };
 
@@ -10,10 +10,11 @@ const msgId = () => `msg-${++nextMsgId}`;
 
 type ChatSidebarProps = {
   username: string;
+  boardId?: number | null;
   onBoardUpdated: () => void;
 };
 
-export const ChatSidebar = ({ username, onBoardUpdated }: ChatSidebarProps) => {
+export const ChatSidebar = ({ username, boardId, onBoardUpdated }: ChatSidebarProps) => {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -38,7 +39,9 @@ export const ChatSidebar = ({ username, onBoardUpdated }: ChatSidebarProps) => {
       setError(null);
 
       try {
-        const response = await sendChat(username, trimmed, messages);
+        const response = boardId != null
+          ? await sendChatForBoard(username, boardId, trimmed, messages)
+          : await sendChat(username, trimmed, messages);
         const assistantMessage: DisplayMessage = {
           id: msgId(),
           role: "assistant",
@@ -54,7 +57,7 @@ export const ChatSidebar = ({ username, onBoardUpdated }: ChatSidebarProps) => {
         setIsSending(false);
       }
     },
-    [input, isSending, messages, username, onBoardUpdated]
+    [input, isSending, messages, username, boardId, onBoardUpdated]
   );
 
   return (

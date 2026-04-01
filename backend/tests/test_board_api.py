@@ -29,11 +29,15 @@ def test_put_board_for_user_persists_and_returns_board(client: TestClient) -> No
 
     put_response = client.put("/api/users/user/board", json=payload)
     assert put_response.status_code == 200
-    assert put_response.json()["board"] == payload
+    board = put_response.json()["board"]
+    assert board["columns"] == payload["columns"]
+    assert board["cards"]["card-1"]["title"] == "API task"
+    assert board["cards"]["card-1"]["details"] == "Saved from API"
 
     get_response = client.get("/api/users/user/board")
     assert get_response.status_code == 200
-    assert get_response.json()["board"] == payload
+    get_board = get_response.json()["board"]
+    assert get_board["cards"]["card-1"]["title"] == "API task"
 
 
 def test_put_board_rejects_invalid_payload_with_consistent_error(client: TestClient) -> None:

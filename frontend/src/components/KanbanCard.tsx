@@ -2,6 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import clsx from "clsx";
 import type { Card } from "@/lib/kanban";
+import { PRIORITY_COLORS, PRIORITY_LABELS } from "@/lib/kanban";
 
 type KanbanCardProps = {
   card: Card;
@@ -16,6 +17,10 @@ export const KanbanCard = ({ card, onDelete }: KanbanCardProps) => {
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  const isOverdue =
+    card.due_date &&
+    new Date(card.due_date) < new Date(new Date().toISOString().split("T")[0]);
 
   return (
     <article
@@ -49,7 +54,47 @@ export const KanbanCard = ({ card, onDelete }: KanbanCardProps) => {
           <h4 className="font-display text-sm font-semibold leading-snug text-[var(--navy-dark)]">
             {card.title}
           </h4>
-          <p className="mt-1 text-xs leading-5 text-[var(--gray-text)]">{card.details}</p>
+          {card.details && (
+            <p className="mt-1 text-xs leading-5 text-[var(--gray-text)]">{card.details}</p>
+          )}
+
+          {/* Priority + labels + due date row */}
+          <div className="mt-2 flex flex-wrap items-center gap-1">
+            {card.priority && (
+              <span
+                className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                style={{
+                  backgroundColor: PRIORITY_COLORS[card.priority] + "1a",
+                  color: PRIORITY_COLORS[card.priority],
+                }}
+              >
+                {PRIORITY_LABELS[card.priority]}
+              </span>
+            )}
+            {card.labels?.map((label) => (
+              <span
+                key={label}
+                className="rounded-full bg-[var(--stroke)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--gray-text)]"
+              >
+                {label}
+              </span>
+            ))}
+            {card.due_date && (
+              <span
+                className={clsx(
+                  "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                  isOverdue
+                    ? "bg-red-50 text-red-500"
+                    : "bg-[var(--stroke)] text-[var(--gray-text)]"
+                )}
+              >
+                <svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M5 .5a.5.5 0 0 1 .5.5V2h5V1a.5.5 0 0 1 1 0v1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h1V1A.5.5 0 0 1 5 .5zm-3 5v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6H2z" />
+                </svg>
+                {card.due_date}
+              </span>
+            )}
+          </div>
         </div>
         <button
           type="button"

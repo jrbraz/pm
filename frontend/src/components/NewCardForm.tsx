@@ -1,9 +1,29 @@
 import { useState, type FormEvent } from "react";
+import type { Priority } from "@/lib/kanban";
 
-const initialFormState = { title: "", details: "" };
+const PRIORITIES: { value: Priority; label: string; color: string }[] = [
+  { value: "low", label: "Low", color: "#888888" },
+  { value: "medium", label: "Medium", color: "#209dd7" },
+  { value: "high", label: "High", color: "#ecad0a" },
+  { value: "critical", label: "Critical", color: "#e53e3e" },
+];
+
+const initialFormState = {
+  title: "",
+  details: "",
+  priority: null as Priority | null,
+  labels: "",
+  due_date: "",
+};
 
 type NewCardFormProps = {
-  onAdd: (title: string, details: string) => void;
+  onAdd: (
+    title: string,
+    details: string,
+    priority?: Priority | null,
+    labels?: string[],
+    dueDate?: string | null
+  ) => void;
 };
 
 export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
@@ -12,10 +32,18 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!formState.title.trim()) {
-      return;
-    }
-    onAdd(formState.title.trim(), formState.details.trim());
+    if (!formState.title.trim()) return;
+    const labels = formState.labels
+      .split(",")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    onAdd(
+      formState.title.trim(),
+      formState.details.trim(),
+      formState.priority,
+      labels,
+      formState.due_date || null
+    );
     setFormState(initialFormState);
     setIsOpen(false);
   };
@@ -43,6 +71,55 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
             rows={2}
             className="w-full resize-none rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm text-[var(--gray-text)] outline-none transition focus:border-[var(--primary-blue)]"
           />
+
+          {/* Priority selector */}
+          <div className="flex flex-wrap gap-1">
+            <button
+              type="button"
+              onClick={() => setFormState((prev) => ({ ...prev, priority: null }))}
+              className={`rounded-full px-2 py-0.5 text-xs font-medium transition ${
+                formState.priority === null
+                  ? "bg-[var(--stroke)] text-[var(--navy-dark)]"
+                  : "text-[var(--gray-text)] hover:bg-[var(--stroke)]"
+              }`}
+            >
+              None
+            </button>
+            {PRIORITIES.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setFormState((prev) => ({ ...prev, priority: p.value }))}
+                className={`rounded-full px-2 py-0.5 text-xs font-medium transition ${
+                  formState.priority === p.value ? "opacity-100" : "opacity-50 hover:opacity-75"
+                }`}
+                style={{
+                  backgroundColor: formState.priority === p.value ? p.color + "22" : undefined,
+                  color: p.color,
+                  border: `1px solid ${p.color}44`,
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Labels */}
+          <input
+            value={formState.labels}
+            onChange={(e) => setFormState((prev) => ({ ...prev, labels: e.target.value }))}
+            placeholder="Labels (comma separated)"
+            className="w-full rounded-xl border border-[var(--stroke)] bg-white px-3 py-1.5 text-xs text-[var(--gray-text)] outline-none transition focus:border-[var(--primary-blue)]"
+          />
+
+          {/* Due date */}
+          <input
+            type="date"
+            value={formState.due_date}
+            onChange={(e) => setFormState((prev) => ({ ...prev, due_date: e.target.value }))}
+            className="w-full rounded-xl border border-[var(--stroke)] bg-white px-3 py-1.5 text-xs text-[var(--gray-text)] outline-none transition focus:border-[var(--primary-blue)]"
+          />
+
           <div className="flex items-center gap-2">
             <button
               type="submit"

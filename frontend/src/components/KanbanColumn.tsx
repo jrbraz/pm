@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import type { Card, Column } from "@/lib/kanban";
+import type { Card, Column, Priority } from "@/lib/kanban";
 import { KanbanCard } from "@/components/KanbanCard";
 import { NewCardForm } from "@/components/NewCardForm";
 
@@ -10,7 +10,7 @@ type KanbanColumnProps = {
   column: Column;
   cards: Card[];
   onRename: (columnId: string, title: string) => void;
-  onAddCard: (columnId: string, title: string, details: string) => void;
+  onAddCard: (columnId: string, title: string, details: string, priority?: Priority | null, labels?: string[], dueDate?: string | null) => void;
   onDeleteCard: (columnId: string, cardId: string) => void;
 };
 
@@ -25,8 +25,9 @@ export const KanbanColumn = ({
   const [localTitle, setLocalTitle] = useState(column.title);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Sync title from parent (e.g. AI board updates) — intentional pattern
   useEffect(() => {
-    setLocalTitle(column.title);
+    setLocalTitle(column.title); // eslint-disable-line react-hooks/set-state-in-effect
   }, [column.title]);
 
   const handleTitleChange = useCallback(
@@ -88,7 +89,9 @@ export const KanbanColumn = ({
         )}
       </div>
       <NewCardForm
-        onAdd={(title, details) => onAddCard(column.id, title, details)}
+        onAdd={(title, details, priority, labels, dueDate) =>
+          onAddCard(column.id, title, details, priority, labels, dueDate)
+        }
       />
     </section>
   );

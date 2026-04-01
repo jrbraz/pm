@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.db import DEFAULT_DB_PATH, initialize_database
 from app.errors import error_payload
-from app.routes import ai_test, board, chat, health
+from app.routes import ai_test, auth, board, chat, health
 
 
 def _resolve_frontend_dist_dir() -> Path:
@@ -33,6 +33,7 @@ def create_app(frontend_dist_dir: Path | None = None, db_path: Path | None = Non
     app.state.db_path = resolved_db_path
 
     app.include_router(health.router)
+    app.include_router(auth.router)
     app.include_router(board.router)
     app.include_router(chat.router)
     app.include_router(ai_test.router)

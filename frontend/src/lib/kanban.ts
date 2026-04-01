@@ -1,7 +1,12 @@
+export type Priority = "low" | "medium" | "high" | "critical";
+
 export type Card = {
   id: string;
   title: string;
   details: string;
+  priority?: Priority | null;
+  labels?: string[];
+  due_date?: string | null;
 };
 
 export type Column = {
@@ -13,6 +18,14 @@ export type Column = {
 export type BoardData = {
   columns: Column[];
   cards: Record<string, Card>;
+};
+
+export type BoardSummary = {
+  id: number;
+  name: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 const isColumnId = (columns: Column[], id: string) =>
@@ -109,4 +122,18 @@ export const createId = (prefix: string) => {
   const randomPart = Math.random().toString(36).slice(2, 8);
   const timePart = Date.now().toString(36);
   return `${prefix}-${randomPart}${timePart}`;
+};
+
+export const PRIORITY_COLORS: Record<Priority, string> = {
+  low: "#888888",
+  medium: "#209dd7",
+  high: "#ecad0a",
+  critical: "#e53e3e",
+};
+
+export const PRIORITY_LABELS: Record<Priority, string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  critical: "Critical",
 };

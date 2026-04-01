@@ -3,48 +3,73 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { KanbanBoard } from "@/components/KanbanBoard";
+import { BoardSelector } from "@/components/BoardSelector";
+import { loginUser, registerUser, logoutUser } from "@/lib/api";
 
-const AUTH_STORAGE_KEY = "pm-authenticated";
-const VALID_USERNAME = "user";
-const VALID_PASSWORD = "password";
+const TOKEN_KEY = "pm-token";
+const USERNAME_KEY = "pm-username";
+
+type AuthMode = "login" | "register";
 
 export const AuthGate = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
   const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [formUsername, setFormUsername] = useState("");
+  const [formPassword, setFormPassword] = useState("");
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeBoardId, setActiveBoardId] = useState<number | null>(null);
+  const [refreshSignal, setRefreshSignal] = useState(0);
 
   useEffect(() => {
-    const isLoggedIn = window.localStorage.getItem(AUTH_STORAGE_KEY) === "true";
-    setIsAuthenticated(isLoggedIn);
+    const storedToken = window.localStorage.getItem(TOKEN_KEY);
+    const storedUsername = window.localStorage.getItem(USERNAME_KEY);
+    if (storedToken && storedUsername) {
+      setToken(storedToken);
+      setUsername(storedUsername);
+    }
   }, []);
 
-  const handleLogin = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (username === VALID_USERNAME && password === VALID_PASSWORD) {
-      window.localStorage.setItem(AUTH_STORAGE_KEY, "true");
-      setIsAuthenticated(true);
-      setPassword("");
-      setErrorMessage("");
-      return;
-    }
-    setErrorMessage("Invalid credentials. Use user / password.");
-  };
-
-  const [refreshSignal, setRefreshSignal] = useState(0);
   const handleBoardUpdated = useCallback(() => {
     setRefreshSignal((n) => n + 1);
   }, []);
 
-  const handleLogout = () => {
-    window.localStorage.removeItem(AUTH_STORAGE_KEY);
-    setIsAuthenticated(false);
-    setUsername("");
-    setPassword("");
+  const handleAuth = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setErrorMessage("");
+    setIsSubmitting(true);
+    try {
+      const result =
+        authMode === "login"
+          ? await loginUser(formUsername, formPassword)
+          : await registerUser(formUsername, formPassword);
+      window.localStorage.setItem(TOKEN_KEY, result.token);
+      window.localStorage.setItem(USERNAME_KEY, result.username);
+      setToken(result.token);
+      setUsername(result.username);
+      setFormPassword("");
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Authentication failed.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  if (!isAuthenticated) {
+  const handleLogout = async () => {
+    if (token) {
+      await logoutUser(token).catch(() => {});
+    }
+    window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(USERNAME_KEY);
+    setToken(null);
+    setUsername("");
+    setActiveBoardId(null);
+    setFormUsername("");
+    setFormPassword("");
+  };
+
+  if (!token) {
     return (
       <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--surface)] px-6 py-12">
         <div className="pointer-events-none absolute left-0 top-0 h-[380px] w-[380px] -translate-x-1/3 -translate-y-1/3 rounded-full bg-[radial-gradient(circle,_rgba(32,157,215,0.25)_0%,_rgba(32,157,215,0.05)_55%,_transparent_70%)]" />
@@ -52,25 +77,27 @@ export const AuthGate = () => {
 
         <section className="relative w-full max-w-md rounded-[28px] border border-[var(--stroke)] bg-white/90 p-8 shadow-[var(--shadow)] backdrop-blur">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--gray-text)]">
-            Sign in
+            {authMode === "login" ? "Sign in" : "Create account"}
           </p>
           <h1 className="mt-3 font-display text-3xl font-semibold text-[var(--navy-dark)]">
             Project Workspace
           </h1>
           <p className="mt-3 text-sm leading-6 text-[var(--gray-text)]">
-            Use the MVP credentials to continue.
+            {authMode === "login"
+              ? "Sign in to access your boards."
+              : "Create an account to get started."}
           </p>
-          <p className="mt-1 text-sm leading-6 text-[var(--primary-blue)]">user / password</p>
 
-          <form onSubmit={handleLogin} className="mt-6 space-y-4">
+          <form onSubmit={(e) => void handleAuth(e)} className="mt-6 space-y-4">
             <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)]">
               Username
               <input
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
+                value={formUsername}
+                onChange={(event) => setFormUsername(event.target.value)}
                 className="mt-2 w-full rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm font-medium text-[var(--navy-dark)] outline-none transition focus:border-[var(--primary-blue)]"
                 autoComplete="username"
                 required
+                minLength={2}
               />
             </label>
 
@@ -78,11 +105,12 @@ export const AuthGate = () => {
               Password
               <input
                 type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                value={formPassword}
+                onChange={(event) => setFormPassword(event.target.value)}
                 className="mt-2 w-full rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm font-medium text-[var(--navy-dark)] outline-none transition focus:border-[var(--primary-blue)]"
-                autoComplete="current-password"
+                autoComplete={authMode === "login" ? "current-password" : "new-password"}
                 required
+                minLength={4}
               />
             </label>
 
@@ -92,11 +120,48 @@ export const AuthGate = () => {
 
             <button
               type="submit"
-              className="w-full rounded-full bg-[var(--secondary-purple)] px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-white transition hover:brightness-110"
+              disabled={isSubmitting}
+              className="w-full rounded-full bg-[var(--secondary-purple)] px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-white transition hover:brightness-110 disabled:opacity-60"
             >
-              Sign in
+              {isSubmitting
+                ? "Please wait..."
+                : authMode === "login"
+                ? "Sign in"
+                : "Create account"}
             </button>
           </form>
+
+          <p className="mt-4 text-center text-xs text-[var(--gray-text)]">
+            {authMode === "login" ? (
+              <>
+                No account?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("register");
+                    setErrorMessage("");
+                  }}
+                  className="font-semibold text-[var(--primary-blue)] hover:underline"
+                >
+                  Register
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("login");
+                    setErrorMessage("");
+                  }}
+                  className="font-semibold text-[var(--primary-blue)] hover:underline"
+                >
+                  Sign in
+                </button>
+              </>
+            )}
+          </p>
         </section>
       </main>
     );
@@ -104,23 +169,59 @@ export const AuthGate = () => {
 
   return (
     <div className="flex min-h-screen">
-      {/* Board area — scrolls horizontally when columns are tight */}
-      <div className="relative min-w-0 flex-1 overflow-x-auto">
-        <div className="absolute right-6 top-5 z-20">
+      {/* Left sidebar: board list */}
+      <aside className="flex w-52 shrink-0 flex-col border-r border-[var(--stroke)] bg-white px-2 py-4">
+        <div className="mb-4 px-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--gray-text)]">
+            Workspace
+          </p>
+          <p className="mt-1 truncate text-sm font-semibold text-[var(--navy-dark)]">
+            {username}
+          </p>
+        </div>
+
+        <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--gray-text)]">
+          Boards
+        </p>
+        <BoardSelector
+          username={username}
+          activeBoardId={activeBoardId}
+          onSelectBoard={setActiveBoardId}
+        />
+
+        <div className="mt-auto px-2 pt-4">
           <button
             type="button"
-            onClick={handleLogout}
-            className="rounded-full border border-[var(--stroke)] bg-white/85 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--navy-dark)] shadow-[var(--shadow)] backdrop-blur transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+            onClick={() => void handleLogout()}
+            className="w-full rounded-lg border border-[var(--stroke)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
           >
             Log out
           </button>
         </div>
-        <KanbanBoard username={VALID_USERNAME} refreshSignal={refreshSignal} />
+      </aside>
+
+      {/* Board area */}
+      <div className="relative min-w-0 flex-1 overflow-x-auto">
+        {activeBoardId !== null ? (
+          <KanbanBoard
+            username={username}
+            boardId={activeBoardId}
+            refreshSignal={refreshSignal}
+          />
+        ) : (
+          <div className="flex min-h-screen items-center justify-center">
+            <p className="text-sm text-[var(--gray-text)]">Select a board to get started.</p>
+          </div>
+        )}
       </div>
 
-      {/* Chat sidebar — fixed width, sticky to viewport height */}
+      {/* Chat sidebar */}
       <div className="sticky top-0 h-screen w-[340px] shrink-0 p-4">
-        <ChatSidebar username={VALID_USERNAME} onBoardUpdated={handleBoardUpdated} />
+        <ChatSidebar
+          username={username}
+          boardId={activeBoardId}
+          onBoardUpdated={handleBoardUpdated}
+        />
       </div>
     </div>
   );

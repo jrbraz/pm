@@ -21,9 +21,12 @@ const testBoard: BoardData = {
   },
 };
 
-const apiResponse = (board: BoardData) => ({
+const namedBoardResponse = (board: BoardData) => ({
+  id: 1,
+  name: "Test Board",
   username: "user",
   board,
+  is_default: true,
 });
 
 const okJsonResponse = (body: unknown) =>
@@ -44,16 +47,16 @@ describe("KanbanBoard", () => {
       .spyOn(globalThis, "fetch")
       .mockImplementation((input, init) => {
         if (!init?.method || init.method === "GET") {
-          return okJsonResponse(apiResponse(testBoard));
+          return okJsonResponse(namedBoardResponse(testBoard));
         }
-        return okJsonResponse(apiResponse(testBoard));
+        return okJsonResponse(namedBoardResponse(testBoard));
       });
 
-    render(<KanbanBoard username="user" />);
+    render(<KanbanBoard username="user" boardId={1} />);
 
     expect(screen.getByText(/loading board/i)).toBeInTheDocument();
     expect(await screen.findAllByTestId(/column-/i)).toHaveLength(5);
-    expect(fetchMock).toHaveBeenCalledWith("/api/users/user/board", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/users/user/boards/1", {
       cache: "no-store",
     });
   });
@@ -63,14 +66,14 @@ describe("KanbanBoard", () => {
       .spyOn(globalThis, "fetch")
       .mockImplementation((input, init) => {
         if (!init?.method || init.method === "GET") {
-          return okJsonResponse(apiResponse(testBoard));
+          return okJsonResponse(namedBoardResponse(testBoard));
         }
 
         const updatedBoard = JSON.parse(String(init.body)) as BoardData;
-        return okJsonResponse(apiResponse(updatedBoard));
+        return okJsonResponse(namedBoardResponse(updatedBoard));
       });
 
-    render(<KanbanBoard username="user" />);
+    render(<KanbanBoard username="user" boardId={1} />);
 
     const column = (await screen.findAllByTestId(/column-/i))[0];
     const input = within(column).getByLabelText("Column title");
@@ -95,9 +98,9 @@ describe("KanbanBoard", () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response("oops", { status: 500 }))
-      .mockImplementation(() => okJsonResponse(apiResponse(testBoard)));
+      .mockImplementation(() => okJsonResponse(namedBoardResponse(testBoard)));
 
-    render(<KanbanBoard username="user" />);
+    render(<KanbanBoard username="user" boardId={1} />);
 
     expect(await screen.findByText(/board unavailable/i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /retry/i }));

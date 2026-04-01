@@ -13,16 +13,19 @@ import {
 } from "@dnd-kit/core";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
 import { KanbanColumn } from "@/components/KanbanColumn";
-import { fetchBoard, saveBoard } from "@/lib/api";
+import { fetchNamedBoard, saveNamedBoard } from "@/lib/api";
 import { createId, moveCard, type BoardData } from "@/lib/kanban";
+import type { Priority } from "@/lib/kanban";
 
 type KanbanBoardProps = {
   username: string;
+  boardId: number;
   refreshSignal?: number;
 };
 
-export const KanbanBoard = ({ username, refreshSignal }: KanbanBoardProps) => {
+export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardProps) => {
   const [board, setBoard] = useState<BoardData | null>(null);
+  const [boardName, setBoardName] = useState("");
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -38,14 +41,15 @@ export const KanbanBoard = ({ username, refreshSignal }: KanbanBoardProps) => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const loadedBoard = await fetchBoard(username);
-      setBoard(loadedBoard);
+      const payload = await fetchNamedBoard(username, boardId);
+      setBoard(payload.board);
+      setBoardName(payload.name);
     } catch {
       setErrorMessage("Unable to load board. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  }, [username]);
+  }, [username, boardId]);
 
   useEffect(() => {
     void loadBoard();
@@ -61,8 +65,8 @@ export const KanbanBoard = ({ username, refreshSignal }: KanbanBoardProps) => {
     async (nextBoard: BoardData) => {
       setIsSaving(true);
       try {
-        const savedBoard = await saveBoard(username, nextBoard);
-        setBoard(savedBoard);
+        const payload = await saveNamedBoard(username, boardId, nextBoard);
+        setBoard(payload.board);
         setErrorMessage(null);
       } catch {
         setErrorMessage("Unable to save board changes.");
@@ -70,7 +74,7 @@ export const KanbanBoard = ({ username, refreshSignal }: KanbanBoardProps) => {
         setIsSaving(false);
       }
     },
-    [username]
+    [username, boardId]
   );
 
   const boardRef = useRef(board);
@@ -121,13 +125,27 @@ export const KanbanBoard = ({ username, refreshSignal }: KanbanBoardProps) => {
     }));
   };
 
-  const handleAddCard = (columnId: string, title: string, details: string) => {
+  const handleAddCard = (
+    columnId: string,
+    title: string,
+    details: string,
+    priority?: Priority | null,
+    labels?: string[],
+    dueDate?: string | null
+  ) => {
     const id = createId("card");
     applyBoardUpdate((currentBoard) => ({
       ...currentBoard,
       cards: {
         ...currentBoard.cards,
-        [id]: { id, title, details: details || "No details yet." },
+        [id]: {
+          id,
+          title,
+          details: details || "No details yet.",
+          priority: priority ?? null,
+          labels: labels ?? [],
+          due_date: dueDate ?? null,
+        },
       },
       columns: currentBoard.columns.map((column) =>
         column.id === columnId
@@ -148,6 +166,14 @@ export const KanbanBoard = ({ username, refreshSignal }: KanbanBoardProps) => {
           ? { ...column, cardIds: column.cardIds.filter((id) => id !== cardId) }
           : column
       ),
+    }));
+  };
+
+  const handleAddColumn = () => {
+    const id = createId("col");
+    applyBoardUpdate((currentBoard) => ({
+      ...currentBoard,
+      columns: [...currentBoard.columns, { id, title: "New Column", cardIds: [] }],
     }));
   };
 
@@ -187,14 +213,13 @@ export const KanbanBoard = ({ username, refreshSignal }: KanbanBoardProps) => {
       <div className="pointer-events-none absolute bottom-0 right-0 h-[520px] w-[520px] translate-x-1/4 translate-y-1/4 rounded-full bg-[radial-gradient(circle,_rgba(117,57,145,0.15)_0%,_rgba(117,57,145,0.04)_55%,_transparent_75%)]" />
 
       <main className="relative flex min-h-screen flex-col gap-6 px-6 pb-16 pt-8">
-        {/* Compact header */}
         <header className="flex items-center justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[var(--gray-text)]">
-              Single Board Kanban
+              Project Board
             </p>
             <h1 className="mt-1 font-display text-2xl font-semibold text-[var(--navy-dark)]">
-              Kanban Studio
+              {boardName || "Kanban Studio"}
             </h1>
           </div>
           <div className="flex shrink-0 items-center gap-3">
@@ -215,7 +240,6 @@ export const KanbanBoard = ({ username, refreshSignal }: KanbanBoardProps) => {
           </div>
         </header>
 
-        {/* Columns — scrolls horizontally when viewport is narrow */}
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -225,7 +249,7 @@ export const KanbanBoard = ({ username, refreshSignal }: KanbanBoardProps) => {
           <div className="overflow-x-auto pb-2">
             <div
               className="flex gap-4"
-              style={{ minWidth: `${board.columns.length * 220}px` }}
+              style={{ minWidth: `${(board.columns.length + 1) * 220}px` }}
             >
               {board.columns.map((column) => (
                 <div key={column.id} style={{ flex: "1 0 0", minWidth: "200px" }}>
@@ -242,6 +266,19 @@ export const KanbanBoard = ({ username, refreshSignal }: KanbanBoardProps) => {
                   />
                 </div>
               ))}
+              {/* Add column button */}
+              <div style={{ flex: "0 0 auto", minWidth: "200px" }}>
+                <button
+                  type="button"
+                  onClick={handleAddColumn}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--stroke)] bg-white/50 text-xs font-semibold text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z" />
+                  </svg>
+                  Add Column
+                </button>
+              </div>
             </div>
           </div>
           <DragOverlay>

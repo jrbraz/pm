@@ -2,7 +2,18 @@ import json
 from pathlib import Path
 
 from app.board_models import BoardData
-from app.db import get_board_json, get_or_create_user_id, upsert_board_json
+from app.db import (
+    create_board,
+    delete_board,
+    get_board_by_id,
+    get_board_json,
+    get_boards_for_user,
+    get_default_board,
+    get_or_create_user_id,
+    rename_board,
+    update_board_json,
+    upsert_board_json,
+)
 
 DEFAULT_BOARD = BoardData(
     columns=[
@@ -17,47 +28,64 @@ DEFAULT_BOARD = BoardData(
             "id": "card-1",
             "title": "Align roadmap themes",
             "details": "Draft quarterly themes with impact statements and metrics.",
+            "priority": "high",
+            "labels": ["strategy"],
         },
         "card-2": {
             "id": "card-2",
             "title": "Gather customer signals",
             "details": "Review support tags, sales notes, and churn feedback.",
+            "priority": "medium",
+            "labels": ["research"],
         },
         "card-3": {
             "id": "card-3",
             "title": "Prototype analytics view",
             "details": "Sketch initial dashboard layout and key drill-downs.",
+            "priority": "medium",
+            "labels": ["design"],
         },
         "card-4": {
             "id": "card-4",
             "title": "Refine status language",
             "details": "Standardize column labels and tone across the board.",
+            "priority": "low",
+            "labels": [],
         },
         "card-5": {
             "id": "card-5",
             "title": "Design card layout",
             "details": "Add hierarchy and spacing for scanning dense lists.",
+            "priority": "medium",
+            "labels": ["design"],
         },
         "card-6": {
             "id": "card-6",
             "title": "QA micro-interactions",
             "details": "Verify hover, focus, and loading states.",
+            "priority": "high",
+            "labels": ["qa"],
         },
         "card-7": {
             "id": "card-7",
             "title": "Ship marketing page",
             "details": "Final copy approved and asset pack delivered.",
+            "priority": None,
+            "labels": ["marketing"],
         },
         "card-8": {
             "id": "card-8",
             "title": "Close onboarding sprint",
             "details": "Document release notes and share internally.",
+            "priority": None,
+            "labels": [],
         },
     },
 )
 
 
 def get_or_create_board_for_user(db_path: Path, username: str) -> BoardData:
+    """Legacy: get or create the default board for a user."""
     user_id = get_or_create_user_id(db_path, username)
     raw_board = get_board_json(db_path, user_id)
 
@@ -71,6 +99,93 @@ def get_or_create_board_for_user(db_path: Path, username: str) -> BoardData:
 
 
 def save_board_for_user(db_path: Path, username: str, board: BoardData) -> BoardData:
+    """Legacy: save the default board for a user."""
     user_id = get_or_create_user_id(db_path, username)
     upsert_board_json(db_path, user_id, board.model_dump_json())
     return board
+
+
+# ---------------------------------------------------------------------------
+# Multi-board service functions
+# ---------------------------------------------------------------------------
+
+def list_boards_for_user(db_path: Path, username: str) -> list[dict]:
+    """List all boards for a user, creating default if none exist."""
+    user_id = get_or_create_user_id(db_path, username)
+    boards = get_boards_for_user(db_path, user_id)
+    if not boards:
+        # Seed default board
+        board_id = create_board(
+            db_path, user_id, "My Board", DEFAULT_BOARD.model_dump_json(), is_default=True
+        )
+        boards = get_boards_for_user(db_path, user_id)
+    return boards
+
+
+def get_board_for_user(db_path: Path, username: str, board_id: int) -> BoardData | None:
+    """Get a specific board by id for a user. Returns None if not found."""
+    user_id = get_or_create_user_id(db_path, username)
+    board_row = get_board_by_id(db_path, board_id, user_id)
+    if board_row is None:
+        return None
+    return BoardData.model_validate(json.loads(board_row["board_json"]))
+
+
+def get_named_board_for_user(db_path: Path, username: str, board_id: int) -> dict | None:
+    """Get board row + parsed data. Returns dict with id, name, board, is_default or None."""
+    user_id = get_or_create_user_id(db_path, username)
+    board_row = get_board_by_id(db_path, board_id, user_id)
+    if board_row is None:
+        return None
+    return {
+        "id": board_row["id"],
+        "name": board_row["name"],
+        "board": BoardData.model_validate(json.loads(board_row["board_json"])),
+        "is_default": board_row["is_default"],
+    }
+
+
+def save_named_board_for_user(
+    db_path: Path, username: str, board_id: int, board: BoardData
+) -> BoardData | None:
+    """Save a specific board. Returns saved board or None if board not found."""
+    user_id = get_or_create_user_id(db_path, username)
+    existing = get_board_by_id(db_path, board_id, user_id)
+    if existing is None:
+        return None
+    update_board_json(db_path, board_id, user_id, board.model_dump_json())
+    return board
+
+
+def create_board_for_user(db_path: Path, username: str, name: str) -> dict:
+    """Create a new board for a user. Returns board summary dict."""
+    user_id = get_or_create_user_id(db_path, username)
+    existing = get_boards_for_user(db_path, user_id)
+    is_first = len(existing) == 0
+    board_id = create_board(
+        db_path, user_id, name, DEFAULT_BOARD.model_dump_json(), is_default=is_first
+    )
+    return {
+        "id": board_id,
+        "name": name,
+        "is_default": is_first,
+        "board": DEFAULT_BOARD,
+    }
+
+
+def rename_board_for_user(
+    db_path: Path, username: str, board_id: int, name: str
+) -> bool:
+    """Rename a board. Returns True if found and renamed."""
+    user_id = get_or_create_user_id(db_path, username)
+    existing = get_board_by_id(db_path, board_id, user_id)
+    if existing is None:
+        return False
+    rename_board(db_path, board_id, user_id, name)
+    return True
+
+
+def delete_board_for_user(db_path: Path, username: str, board_id: int) -> bool:
+    """Delete a board. Returns True if deleted."""
+    user_id = get_or_create_user_id(db_path, username)
+    return delete_board(db_path, board_id, user_id)

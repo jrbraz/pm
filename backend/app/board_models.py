@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -5,6 +7,9 @@ class Card(BaseModel):
     id: str = Field(min_length=1)
     title: str = Field(min_length=1)
     details: str
+    priority: Literal["low", "medium", "high", "critical"] | None = None
+    labels: list[str] = Field(default_factory=list)
+    due_date: str | None = None
 
 
 class Column(BaseModel):
@@ -36,6 +41,27 @@ class BoardData(BaseModel):
         return self
 
 
+class BoardSummary(BaseModel):
+    id: int
+    name: str
+    is_default: bool
+    created_at: str
+    updated_at: str
+
+
 class BoardResponse(BaseModel):
     username: str
     board: BoardData
+
+
+class NamedBoardResponse(BaseModel):
+    id: int
+    name: str
+    username: str
+    board: BoardData
+    is_default: bool
+
+
+class BoardListResponse(BaseModel):
+    username: str
+    boards: list[BoardSummary]

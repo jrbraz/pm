@@ -25,7 +25,8 @@
       "Bash(uv run:*)",
       "Bash(npm run:*)",
       "Bash(powershell -ExecutionPolicy Bypass -File scripts/run-all-tests.ps1)",
-      "Bash(find C:\\\\dev-source\\\\pm -name \"*.tsx\" -o -name \"*.ts\" 2>/dev/null | head -20)"
+      "Bash(find C:\\\\dev-source\\\\pm -name \"*.tsx\" -o -name \"*.ts\" 2>/dev/null | head -20)",
+      "Bash(cat /c/dev-source/pm/frontend/eslint.config.mjs 2>/dev/null || cat /c/dev-source/pm/frontend/.eslintrc.* 2>/dev/null | head -40)"
     ]
   }
 }
