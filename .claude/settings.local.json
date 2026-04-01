@@ -24,7 +24,8 @@
       "Bash(export PATH=\"/c/Users/333327/.local/bin:$PATH\")",
       "Bash(uv run:*)",
       "Bash(npm run:*)",
-      "Bash(powershell -ExecutionPolicy Bypass -File scripts/run-all-tests.ps1)"
+      "Bash(powershell -ExecutionPolicy Bypass -File scripts/run-all-tests.ps1)",
+      "Bash(find C:\\\\dev-source\\\\pm -name \"*.tsx\" -o -name \"*.ts\" 2>/dev/null | head -20)"
     ]
   }
 }
