@@ -8,6 +8,7 @@ from app.board_models import BoardData, BoardListResponse, BoardResponse, BoardS
 from app.board_service import (
     create_board_for_user,
     delete_board_for_user,
+    duplicate_board_for_user,
     get_named_board_for_user,
     get_or_create_board_for_user,
     list_boards_for_user,
@@ -144,6 +145,34 @@ def delete_named_board(username: str, board_id: int, request: Request):
             status_code=404,
             content=error_payload("NOT_FOUND", "Board not found."),
         )
+
+
+class DuplicateBoardRequest(BaseModel):
+    name: str
+
+
+@router.post("/users/{username}/boards/{board_id}/duplicate", response_model=NamedBoardResponse, status_code=201)
+def duplicate_board(username: str, board_id: int, body: DuplicateBoardRequest, request: Request):
+    """Duplicate a board under a new name."""
+    name = body.name.strip() if body.name else ""
+    if not name:
+        return JSONResponse(
+            status_code=400,
+            content=error_payload("VALIDATION_ERROR", "Board name is required."),
+        )
+    result = duplicate_board_for_user(_db_path(request), username, board_id, name)
+    if result is None:
+        return JSONResponse(
+            status_code=404,
+            content=error_payload("NOT_FOUND", "Board not found."),
+        )
+    return NamedBoardResponse(
+        id=result["id"],
+        name=result["name"],
+        username=username,
+        board=result["board"],
+        is_default=result["is_default"],
+    )
 
 
 @router.get("/users/{username}/boards/{board_id}/stats")

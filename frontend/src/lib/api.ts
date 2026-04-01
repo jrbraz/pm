@@ -107,6 +107,25 @@ export const createBoard = async (username: string, name: string): Promise<Named
   return (await response.json()) as NamedBoardPayload;
 };
 
+export const duplicateBoard = async (
+  username: string,
+  boardId: number,
+  name: string
+): Promise<NamedBoardPayload> => {
+  const response = await fetch(
+    `/api/users/${encodeURIComponent(username)}/boards/${boardId}/duplicate`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }
+  );
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+  return (await response.json()) as NamedBoardPayload;
+};
+
 export const deleteBoard = async (username: string, boardId: number): Promise<void> => {
   const response = await fetch(
     `/api/users/${encodeURIComponent(username)}/boards/${boardId}`,

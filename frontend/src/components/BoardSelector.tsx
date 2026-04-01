@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { createBoard, deleteBoard, listBoards, renameBoard } from "@/lib/api";
+import { createBoard, deleteBoard, duplicateBoard, listBoards, renameBoard } from "@/lib/api";
 import type { BoardSummary } from "@/lib/kanban";
 
 type BoardSelectorProps = {
@@ -93,6 +93,25 @@ export const BoardSelector = ({
     setRenameValue(board.name);
   };
 
+  const handleDuplicate = async (board: BoardSummary) => {
+    try {
+      const dup = await duplicateBoard(username, board.id, `${board.name} (Copy)`);
+      setBoards((prev) => [
+        ...prev,
+        {
+          id: dup.id,
+          name: dup.name,
+          is_default: dup.is_default,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ]);
+      onSelectBoard(dup.id);
+    } catch {
+      // ignore
+    }
+  };
+
   const commitRename = async (boardId: number) => {
     const name = renameValue.trim();
     if (!name) {
@@ -152,6 +171,17 @@ export const BoardSelector = ({
           )}
 
           <div className="flex shrink-0 items-center gap-1 opacity-0 transition group-hover:opacity-100">
+            <button
+              type="button"
+              title="Duplicate board"
+              onClick={() => void handleDuplicate(board)}
+              className="rounded p-0.5 text-[var(--gray-text)] hover:text-[var(--primary-blue)]"
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z" />
+                <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z" />
+              </svg>
+            </button>
             <button
               type="button"
               title="Rename board"

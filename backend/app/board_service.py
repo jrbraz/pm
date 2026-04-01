@@ -189,3 +189,18 @@ def delete_board_for_user(db_path: Path, username: str, board_id: int) -> bool:
     """Delete a board. Returns True if deleted."""
     user_id = get_or_create_user_id(db_path, username)
     return delete_board(db_path, board_id, user_id)
+
+
+def duplicate_board_for_user(db_path: Path, username: str, board_id: int, new_name: str) -> dict | None:
+    """Duplicate a board under a new name. Returns new board summary or None if not found."""
+    user_id = get_or_create_user_id(db_path, username)
+    source = get_board_by_id(db_path, board_id, user_id)
+    if source is None:
+        return None
+    new_board_id = create_board(db_path, user_id, new_name, source["board_json"], is_default=False)
+    return {
+        "id": new_board_id,
+        "name": new_name,
+        "is_default": False,
+        "board": BoardData.model_validate(json.loads(source["board_json"])),
+    }
