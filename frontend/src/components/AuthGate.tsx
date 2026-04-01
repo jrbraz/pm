@@ -1,7 +1,9 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { AuthContext } from "@/components/AuthContext";
 import { ChatSidebar } from "@/components/ChatSidebar";
+import { DashboardPage } from "@/components/DashboardPage";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { BoardSelector } from "@/components/BoardSelector";
 import { loginUser, registerUser, logoutUser } from "@/lib/api";
@@ -168,61 +170,74 @@ export const AuthGate = () => {
   }
 
   return (
-    <div className="flex min-h-screen">
-      {/* Left sidebar: board list */}
-      <aside className="flex w-52 shrink-0 flex-col border-r border-[var(--stroke)] bg-white px-2 py-4">
-        <div className="mb-4 px-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--gray-text)]">
-            Workspace
-          </p>
-          <p className="mt-1 truncate text-sm font-semibold text-[var(--navy-dark)]">
-            {username}
-          </p>
-        </div>
+    <AuthContext.Provider value={{ token, username }}>
+      <div className="flex min-h-screen">
+        {/* Left sidebar: board list */}
+        <aside className="flex w-52 shrink-0 flex-col border-r border-[var(--stroke)] bg-white px-2 py-4">
+          <div className="mb-4 px-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--gray-text)]">
+              Workspace
+            </p>
+            <p className="mt-1 truncate text-sm font-semibold text-[var(--navy-dark)]">
+              {username}
+            </p>
+          </div>
 
-        <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--gray-text)]">
-          Boards
-        </p>
-        <BoardSelector
-          username={username}
-          activeBoardId={activeBoardId}
-          onSelectBoard={setActiveBoardId}
-        />
-
-        <div className="mt-auto px-2 pt-4">
+          {/* Dashboard link */}
           <button
             type="button"
-            onClick={() => void handleLogout()}
-            className="w-full rounded-lg border border-[var(--stroke)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+            onClick={() => setActiveBoardId(null)}
+            className={`mb-2 w-full rounded-xl px-2 py-1.5 text-left text-xs font-semibold transition ${
+              activeBoardId === null
+                ? "bg-[var(--surface)] text-[var(--navy-dark)]"
+                : "text-[var(--gray-text)] hover:text-[var(--navy-dark)]"
+            }`}
           >
-            Log out
+            Dashboard
           </button>
-        </div>
-      </aside>
 
-      {/* Board area */}
-      <div className="relative min-w-0 flex-1 overflow-x-auto">
-        {activeBoardId !== null ? (
-          <KanbanBoard
+          <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--gray-text)]">
+            Boards
+          </p>
+          <BoardSelector
+            username={username}
+            activeBoardId={activeBoardId}
+            onSelectBoard={setActiveBoardId}
+          />
+
+          <div className="mt-auto px-2 pt-4">
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              className="w-full rounded-lg border border-[var(--stroke)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+            >
+              Log out
+            </button>
+          </div>
+        </aside>
+
+        {/* Board area */}
+        <div className="relative min-w-0 flex-1 overflow-x-auto">
+          {activeBoardId !== null ? (
+            <KanbanBoard
+              username={username}
+              boardId={activeBoardId}
+              refreshSignal={refreshSignal}
+            />
+          ) : (
+            <DashboardPage onSelectBoard={setActiveBoardId} />
+          )}
+        </div>
+
+        {/* Chat sidebar */}
+        <div className="sticky top-0 h-screen w-[340px] shrink-0 p-4">
+          <ChatSidebar
             username={username}
             boardId={activeBoardId}
-            refreshSignal={refreshSignal}
+            onBoardUpdated={handleBoardUpdated}
           />
-        ) : (
-          <div className="flex min-h-screen items-center justify-center">
-            <p className="text-sm text-[var(--gray-text)]">Select a board to get started.</p>
-          </div>
-        )}
+        </div>
       </div>
-
-      {/* Chat sidebar */}
-      <div className="sticky top-0 h-screen w-[340px] shrink-0 p-4">
-        <ChatSidebar
-          username={username}
-          boardId={activeBoardId}
-          onBoardUpdated={handleBoardUpdated}
-        />
-      </div>
-    </div>
+    </AuthContext.Provider>
   );
 };

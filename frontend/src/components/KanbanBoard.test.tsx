@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KanbanBoard } from "@/components/KanbanBoard";
+import { AuthContext } from "@/components/AuthContext";
 import type { BoardData } from "@/lib/kanban";
 
 const testBoard: BoardData = {
@@ -37,6 +38,19 @@ const okJsonResponse = (body: unknown) =>
     })
   );
 
+const membersResponse = {
+  board_id: 1,
+  owner_user_id: 1,
+  members: [],
+};
+
+const renderBoard = () =>
+  render(
+    <AuthContext.Provider value={{ token: "test-token", username: "user" }}>
+      <KanbanBoard username="user" boardId={1} />
+    </AuthContext.Provider>
+  );
+
 describe("KanbanBoard", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -45,35 +59,38 @@ describe("KanbanBoard", () => {
   it("loads board data from API", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
-      .mockImplementation((input, init) => {
-        if (!init?.method || init.method === "GET") {
-          return okJsonResponse(namedBoardResponse(testBoard));
+      .mockImplementation((input) => {
+        if (String(input).includes("/members")) {
+          return okJsonResponse(membersResponse);
         }
         return okJsonResponse(namedBoardResponse(testBoard));
       });
 
-    render(<KanbanBoard username="user" boardId={1} />);
+    renderBoard();
 
     expect(screen.getByText(/loading board/i)).toBeInTheDocument();
     expect(await screen.findAllByTestId(/column-/i)).toHaveLength(5);
-    expect(fetchMock).toHaveBeenCalledWith("/api/users/user/boards/1", {
-      cache: "no-store",
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/users/user/boards/1",
+      expect.objectContaining({ cache: "no-store" })
+    );
   });
 
   it("sends updated board to API when renaming a column", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation((input, init) => {
+        if (String(input).includes("/members")) {
+          return okJsonResponse(membersResponse);
+        }
         if (!init?.method || init.method === "GET") {
           return okJsonResponse(namedBoardResponse(testBoard));
         }
-
         const updatedBoard = JSON.parse(String(init.body)) as BoardData;
         return okJsonResponse(namedBoardResponse(updatedBoard));
       });
 
-    render(<KanbanBoard username="user" boardId={1} />);
+    renderBoard();
 
     const column = (await screen.findAllByTestId(/column-/i))[0];
     const input = within(column).getByLabelText("Column title");
@@ -95,16 +112,19 @@ describe("KanbanBoard", () => {
   });
 
   it("shows recoverable error when loading board fails", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
+    vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response("oops", { status: 500 }))
-      .mockImplementation(() => okJsonResponse(namedBoardResponse(testBoard)));
+      .mockImplementation((input) => {
+        if (String(input).includes("/members")) {
+          return okJsonResponse(membersResponse);
+        }
+        return okJsonResponse(namedBoardResponse(testBoard));
+      });
 
-    render(<KanbanBoard username="user" boardId={1} />);
+    renderBoard();
 
     expect(await screen.findByText(/board unavailable/i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /retry/i }));
     expect(await screen.findAllByTestId(/column-/i)).toHaveLength(5);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

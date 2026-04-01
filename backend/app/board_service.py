@@ -6,12 +6,14 @@ from app.db import (
     create_board,
     delete_board,
     get_board_by_id,
+    get_board_by_id_with_access,
     get_board_json,
     get_boards_for_user,
     get_default_board,
     get_or_create_user_id,
     rename_board,
     update_board_json,
+    update_board_json_by_id,
     upsert_board_json,
 )
 
@@ -114,8 +116,7 @@ def list_boards_for_user(db_path: Path, username: str) -> list[dict]:
     user_id = get_or_create_user_id(db_path, username)
     boards = get_boards_for_user(db_path, user_id)
     if not boards:
-        # Seed default board
-        board_id = create_board(
+        create_board(
             db_path, user_id, "My Board", DEFAULT_BOARD.model_dump_json(), is_default=True
         )
         boards = get_boards_for_user(db_path, user_id)
@@ -132,7 +133,7 @@ def get_board_for_user(db_path: Path, username: str, board_id: int) -> BoardData
 
 
 def get_named_board_for_user(db_path: Path, username: str, board_id: int) -> dict | None:
-    """Get board row + parsed data. Returns dict with id, name, board, is_default or None."""
+    """Get board row + parsed data for owner. Returns dict with id, name, board, is_default or None."""
     user_id = get_or_create_user_id(db_path, username)
     board_row = get_board_by_id(db_path, board_id, user_id)
     if board_row is None:
@@ -145,15 +146,46 @@ def get_named_board_for_user(db_path: Path, username: str, board_id: int) -> dic
     }
 
 
+def get_named_board_with_access(db_path: Path, user_id: int, board_id: int) -> dict | None:
+    """Get board row + parsed data for owner OR member. Returns dict or None."""
+    board_row = get_board_by_id_with_access(db_path, board_id, user_id)
+    if board_row is None:
+        return None
+    return {
+        "id": board_row["id"],
+        "name": board_row["name"],
+        "board": BoardData.model_validate(json.loads(board_row["board_json"])),
+        "is_default": board_row["is_default"],
+        "access_role": board_row.get("access_role", "owner"),
+    }
+
+
 def save_named_board_for_user(
     db_path: Path, username: str, board_id: int, board: BoardData
 ) -> BoardData | None:
-    """Save a specific board. Returns saved board or None if board not found."""
+    """Save a specific board as owner. Returns saved board or None if board not found."""
     user_id = get_or_create_user_id(db_path, username)
     existing = get_board_by_id(db_path, board_id, user_id)
     if existing is None:
         return None
     update_board_json(db_path, board_id, user_id, board.model_dump_json())
+    return board
+
+
+def save_named_board_with_access(
+    db_path: Path, user_id: int, board_id: int, board: BoardData
+) -> BoardData | None:
+    """Save a specific board as owner OR member. Returns saved board or None if not found."""
+    board_row = get_board_by_id_with_access(db_path, board_id, user_id)
+    if board_row is None:
+        return None
+    # Use the board's actual owner_user_id for the update
+    owner_user_id = board_row["owner_user_id"]
+    if owner_user_id == user_id:
+        update_board_json(db_path, board_id, user_id, board.model_dump_json())
+    else:
+        # Member save: update without ownership check
+        update_board_json_by_id(db_path, board_id, board.model_dump_json())
     return board
 
 

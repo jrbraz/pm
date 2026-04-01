@@ -1,5 +1,11 @@
 export type Priority = "low" | "medium" | "high" | "critical";
 
+export type ChecklistItem = {
+  id: string;
+  text: string;
+  done: boolean;
+};
+
 export type Card = {
   id: string;
   title: string;
@@ -7,6 +13,8 @@ export type Card = {
   priority?: Priority | null;
   labels?: string[];
   due_date?: string | null;
+  checklist?: ChecklistItem[];
+  assignee_ids?: string[];
 };
 
 export type Column = {
@@ -26,6 +34,55 @@ export type BoardSummary = {
   is_default: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type BoardMember = {
+  id: number;
+  user_id: number;
+  username: string;
+  role: "owner" | "member" | "viewer";
+  created_at: string;
+  invited_by: string | null;
+};
+
+export type Comment = {
+  id: number;
+  card_id: string;
+  user_id: number;
+  username: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ActivityEntry = {
+  id: number;
+  entity_type: string;
+  entity_id: string;
+  action: string;
+  detail: Record<string, unknown> | null;
+  created_at: string;
+  username: string;
+  board_id?: number;
+  board_name?: string;
+};
+
+export type DashboardData = {
+  username: string;
+  total_boards: number;
+  total_cards: number;
+  total_overdue: number;
+  boards: Array<{
+    id: number;
+    name: string;
+    owner_username: string;
+    access_role: string;
+    is_default: boolean;
+    card_count: number;
+    overdue: number;
+    updated_at: string;
+  }>;
+  recent_activity: ActivityEntry[];
 };
 
 const isColumnId = (columns: Column[], id: string) =>
@@ -136,4 +193,22 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
   medium: "Medium",
   high: "High",
   critical: "Critical",
+};
+
+export const formatRelativeTime = (isoString: string): string => {
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+};
+
+export const getInitials = (username: string): string => {
+  return username.slice(0, 2).toUpperCase();
 };

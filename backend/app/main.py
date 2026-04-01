@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.db import DEFAULT_DB_PATH, initialize_database
 from app.errors import error_payload
-from app.routes import ai_test, auth, board, chat, health, users
+from app.routes import activity, ai_test, auth, board, chat, comments, health, members, users
 
 
 def _resolve_frontend_dist_dir() -> Path:
@@ -26,7 +26,7 @@ def _resolve_db_path() -> Path:
 
 
 def create_app(frontend_dist_dir: Path | None = None, db_path: Path | None = None) -> FastAPI:
-    app = FastAPI(title="Project Management MVP Backend", version="0.1.0")
+    app = FastAPI(title="Project Management MVP Backend", version="0.2.0")
 
     resolved_db_path = db_path.resolve() if db_path is not None else _resolve_db_path()
     initialize_database(resolved_db_path)
@@ -38,6 +38,9 @@ def create_app(frontend_dist_dir: Path | None = None, db_path: Path | None = Non
     app.include_router(board.router)
     app.include_router(chat.router)
     app.include_router(ai_test.router)
+    app.include_router(members.router)
+    app.include_router(comments.router)
+    app.include_router(activity.router)
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(_request, _exc: RequestValidationError):

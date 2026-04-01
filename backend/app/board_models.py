@@ -3,6 +3,12 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 
+class ChecklistItem(BaseModel):
+    id: str = Field(min_length=1)
+    text: str = Field(min_length=1)
+    done: bool = False
+
+
 class Card(BaseModel):
     id: str = Field(min_length=1)
     title: str = Field(min_length=1)
@@ -10,6 +16,8 @@ class Card(BaseModel):
     priority: Literal["low", "medium", "high", "critical"] | None = None
     labels: list[str] = Field(default_factory=list)
     due_date: str | None = None
+    checklist: list[ChecklistItem] = Field(default_factory=list)
+    assignee_ids: list[str] = Field(default_factory=list)
 
 
 class Column(BaseModel):

@@ -13,10 +13,12 @@ import {
 } from "@dnd-kit/core";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
 import { KanbanColumn } from "@/components/KanbanColumn";
-import { CardEditModal } from "@/components/CardEditModal";
-import { fetchNamedBoard, saveNamedBoard } from "@/lib/api";
-import { createId, moveCard, type BoardData, type Card, type Priority } from "@/lib/kanban";
+import { CardDetailPanel } from "@/components/CardDetailPanel";
+import { BoardSettingsPanel } from "@/components/BoardSettingsPanel";
+import { fetchBoardMembers, fetchNamedBoard, saveNamedBoard } from "@/lib/api";
+import { createId, moveCard, type BoardData, type Card, type BoardMember, type Priority } from "@/lib/kanban";
 import { PRIORITY_COLORS, PRIORITY_LABELS } from "@/lib/kanban";
+import { useAuth } from "@/components/AuthContext";
 
 type KanbanBoardProps = {
   username: string;
@@ -25,10 +27,13 @@ type KanbanBoardProps = {
 };
 
 export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardProps) => {
+  const { token } = useAuth();
   const [board, setBoard] = useState<BoardData | null>(null);
   const [boardName, setBoardName] = useState("");
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [editingCard, setEditingCard] = useState<Card | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [members, setMembers] = useState<BoardMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -46,7 +51,7 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const payload = await fetchNamedBoard(username, boardId);
+      const payload = await fetchNamedBoard(username, boardId, token || undefined);
       setBoard(payload.board);
       setBoardName(payload.name);
     } catch {
@@ -54,11 +59,22 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
     } finally {
       setIsLoading(false);
     }
-  }, [username, boardId]);
+  }, [username, boardId, token]);
+
+  const loadMembers = useCallback(async () => {
+    if (!token) return;
+    try {
+      const { members: m } = await fetchBoardMembers(username, boardId, token);
+      setMembers(m);
+    } catch {
+      // Non-fatal: members just won't show in assignee list
+    }
+  }, [username, boardId, token]);
 
   useEffect(() => {
     void loadBoard();
-  }, [loadBoard]);
+    void loadMembers();
+  }, [loadBoard, loadMembers]);
 
   useEffect(() => {
     if (refreshSignal) {
@@ -70,7 +86,7 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
     async (nextBoard: BoardData) => {
       setIsSaving(true);
       try {
-        const payload = await saveNamedBoard(username, boardId, nextBoard);
+        const payload = await saveNamedBoard(username, boardId, nextBoard, token || undefined);
         setBoard(payload.board);
         setErrorMessage(null);
       } catch {
@@ -79,7 +95,7 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
         setIsSaving(false);
       }
     },
-    [username, boardId]
+    [username, boardId, token]
   );
 
   const boardRef = useRef(board);
@@ -109,7 +125,7 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
   // Derived: filtered card IDs (for visual filtering)
   const filteredCardIds = useMemo(() => {
     if (!board) return new Set<string>();
-    if (!searchQuery && !filterPriority && !filterLabel) return null; // null = show all
+    if (!searchQuery && !filterPriority && !filterLabel) return null;
     const result = new Set<string>();
     Object.values(board.cards).forEach((card) => {
       const matchesSearch =
@@ -147,12 +163,19 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
   const cardsById = useMemo(() => board?.cards ?? {}, [board?.cards]);
   const activeCard = activeCardId ? cardsById[activeCardId] : null;
 
-  // Find column title for a card (for edit modal)
+  // Find column title for a card (for detail panel)
   const editingCardColumnTitle = useMemo(() => {
     if (!editingCard || !board) return "";
     const col = board.columns.find((c) => c.cardIds.includes(editingCard.id));
     return col?.title ?? "";
   }, [editingCard, board]);
+
+  // All board member usernames (owner + members) for assignee selection
+  const allMemberUsernames = useMemo(() => {
+    const names = new Set([username]);
+    members.forEach((m) => names.add(m.username));
+    return [...names];
+  }, [username, members]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveCardId(event.active.id as string);
@@ -219,6 +242,8 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
           priority: priority ?? null,
           labels: labels ?? [],
           due_date: dueDate ?? null,
+          checklist: [],
+          assignee_ids: [],
         },
       },
       columns: currentBoard.columns.map((column) =>
@@ -255,6 +280,7 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
         [updated.id]: updated,
       },
     }));
+    setEditingCard(null);
   };
 
   const handleAddColumn = () => {
@@ -329,6 +355,18 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
             >
               {isSaving ? "Saving..." : "Saved"}
             </span>
+            {/* Settings button */}
+            <button
+              type="button"
+              onClick={() => setShowSettings(true)}
+              className="rounded-xl border border-[var(--stroke)] bg-white p-2 text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+              title="Board settings"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z" />
+                <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.465l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z" />
+              </svg>
+            </button>
           </div>
         </header>
 
@@ -358,6 +396,25 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
               >
                 {boardStats.byPriority.high} high
               </span>
+            )}
+            {members.length > 0 && (
+              <div className="flex items-center gap-1">
+                {[username, ...members.map((m) => m.username)].slice(0, 4).map((m) => (
+                  <div
+                    key={m}
+                    className="flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                    style={{ backgroundColor: "var(--primary-blue)" }}
+                    title={m}
+                  >
+                    {m.slice(0, 2).toUpperCase()}
+                  </div>
+                ))}
+                {members.length > 3 && (
+                  <span className="text-[10px] font-semibold text-[var(--gray-text)]">
+                    +{members.length - 3}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -449,12 +506,11 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
               style={{ minWidth: `${(board.columns.length + 1) * 220}px` }}
             >
               {board.columns.map((column) => {
-                // Apply filter: only show matching cards (but preserve cardIds for dnd)
                 const visibleCards = column.cardIds
                   .map((cardId) => board.cards[cardId])
                   .filter((card): card is Card => {
                     if (!card) return false;
-                    if (filteredCardIds === null) return true; // no filter
+                    if (filteredCardIds === null) return true;
                     return filteredCardIds.has(card.id);
                   });
 
@@ -497,13 +553,26 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
         </DndContext>
       </main>
 
-      {/* Card edit modal */}
+      {/* Card detail panel */}
       {editingCard && (
-        <CardEditModal
+        <CardDetailPanel
           card={editingCard}
           columnTitle={editingCardColumnTitle}
+          username={username}
+          boardId={boardId}
+          boardMembers={allMemberUsernames}
           onSave={handleSaveCard}
           onClose={() => setEditingCard(null)}
+        />
+      )}
+
+      {/* Board settings panel */}
+      {showSettings && (
+        <BoardSettingsPanel
+          username={username}
+          boardId={boardId}
+          boardName={boardName}
+          onClose={() => { setShowSettings(false); void loadMembers(); }}
         />
       )}
     </div>

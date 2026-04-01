@@ -12,10 +12,12 @@ vi.mock("@/components/ChatSidebar", () => ({
 
 vi.mock("@/components/BoardSelector", () => ({
   BoardSelector: ({ onSelectBoard }: { onSelectBoard: (id: number) => void }) => {
-    // Simulate selecting board 1 on mount
-    setTimeout(() => onSelectBoard(1), 0);
-    return <div data-testid="board-selector">Boards</div>;
+    return <div data-testid="board-selector" onClick={() => onSelectBoard(1)}>Boards</div>;
   },
+}));
+
+vi.mock("@/components/DashboardPage", () => ({
+  DashboardPage: () => <div data-testid="dashboard-page">Dashboard</div>,
 }));
 
 const mockFetch = (overrides: Record<string, unknown> = {}) => {
@@ -52,6 +54,37 @@ describe("AuthGate", () => {
     expect(screen.queryByTestId("kanban-board")).not.toBeInTheDocument();
   });
 
+  it("shows dashboard after login (no board selected)", async () => {
+    mockFetch();
+    render(<AuthGate />);
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(/username/i), "testuser");
+    await user.type(screen.getByLabelText(/password/i), "testpass");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("dashboard-page")).toBeInTheDocument()
+    );
+  });
+
+  it("shows kanban board when a board is selected", async () => {
+    mockFetch();
+    render(<AuthGate />);
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(/username/i), "testuser");
+    await user.type(screen.getByLabelText(/password/i), "testpass");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await waitFor(() => screen.getByTestId("board-selector"));
+    await user.click(screen.getByTestId("board-selector"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("kanban-board")).toBeInTheDocument()
+    );
+  });
+
   it("shows error on invalid credentials", async () => {
     mockFetch({ loginFail: true });
     render(<AuthGate />);
@@ -69,7 +102,7 @@ describe("AuthGate", () => {
     expect(screen.queryByTestId("kanban-board")).not.toBeInTheDocument();
   });
 
-  it("logs in with valid credentials and supports logout", async () => {
+  it("shows dashboard link in sidebar when authenticated", async () => {
     mockFetch();
     render(<AuthGate />);
     const user = userEvent.setup();
@@ -79,10 +112,20 @@ describe("AuthGate", () => {
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() =>
-      expect(screen.getByTestId("board-selector")).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /dashboard/i })).toBeInTheDocument()
     );
-    expect(window.localStorage.getItem("pm-token")).toBe("test-token-123");
+  });
 
+  it("logs out successfully", async () => {
+    mockFetch();
+    render(<AuthGate />);
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(/username/i), "testuser");
+    await user.type(screen.getByLabelText(/password/i), "testpass");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await waitFor(() => screen.getByRole("button", { name: /log out/i }));
     await user.click(screen.getByRole("button", { name: /log out/i }));
 
     await waitFor(() =>

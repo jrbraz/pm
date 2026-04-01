@@ -1,11 +1,12 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.auth import hash_password, verify_password
-from app.db import get_user_by_username
+from app.db import get_user_by_username, search_users
+from app.deps import get_current_user
 from app.errors import error_payload
 
 router = APIRouter(prefix="/api/users")
@@ -76,3 +77,18 @@ def change_password(username: str, body: ChangePasswordRequest, request: Request
         conn.commit()
 
     return {"status": "ok", "message": "Password changed successfully."}
+
+
+# Search must be registered BEFORE /{username}/... routes to avoid conflicts.
+# This route is on the router with prefix="/api/users" so the full path is /api/users/search
+@router.get("/search")
+def search_users_route(
+    q: str = "",
+    request: Request = None,
+    current_user: dict = Depends(get_current_user),
+) -> list:
+    if not q or len(q) < 1:
+        return []
+    db_path = request.app.state.db_path
+    results = search_users(db_path, q, limit=10)
+    return results

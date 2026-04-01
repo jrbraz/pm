@@ -29,7 +29,12 @@
       "Bash(cat /c/dev-source/pm/frontend/eslint.config.mjs 2>/dev/null || cat /c/dev-source/pm/frontend/.eslintrc.* 2>/dev/null | head -40)",
       "WebFetch(domain:openai.github.io)",
       "WebFetch(domain:github.com)",
-      "Bash(jq --version)"
+      "Bash(jq --version)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(winget install:*)",
+      "Bash(winget search:*)",
+      "Bash('/c/Users/333327/AppData/Local/Microsoft/WinGet/Links/jq.exe' --version)"
     ]
   }
 }

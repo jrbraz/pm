@@ -2,7 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import clsx from "clsx";
 import type { Card } from "@/lib/kanban";
-import { PRIORITY_COLORS, PRIORITY_LABELS } from "@/lib/kanban";
+import { PRIORITY_COLORS, PRIORITY_LABELS, getInitials } from "@/lib/kanban";
 
 type KanbanCardProps = {
   card: Card;
@@ -22,6 +22,13 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
   const isOverdue =
     card.due_date &&
     new Date(card.due_date) < new Date(new Date().toISOString().split("T")[0]);
+
+  const checklist = card.checklist ?? [];
+  const checklistTotal = checklist.length;
+  const checklistDone = checklist.filter((i) => i.done).length;
+  const hasChecklist = checklistTotal > 0;
+
+  const assignees = card.assignee_ids ?? [];
 
   return (
     <article
@@ -97,7 +104,36 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
                 {card.due_date}
               </span>
             )}
+            {hasChecklist && (
+              <span className="flex items-center gap-0.5 rounded-full bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--gray-text)]">
+                <svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M14.5 3a.5.5 0 0 1 0 1H11V5h1.5a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-6a.5.5 0 0 1 .5-.5H5V4H1.5a.5.5 0 0 1 0-1H5v-.5A1.5 1.5 0 0 1 6.5 1h3A1.5 1.5 0 0 1 11 2.5V3h3.5zM6 2.5v.5h4v-.5a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5z" />
+                </svg>
+                {checklistDone}/{checklistTotal}
+              </span>
+            )}
           </div>
+
+          {/* Assignee avatars */}
+          {assignees.length > 0 && (
+            <div className="mt-2 flex items-center gap-1">
+              {assignees.slice(0, 3).map((userId) => (
+                <div
+                  key={userId}
+                  className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold text-white"
+                  style={{ backgroundColor: "var(--primary-blue)" }}
+                  title={userId}
+                >
+                  {getInitials(userId)}
+                </div>
+              ))}
+              {assignees.length > 3 && (
+                <span className="text-[10px] font-semibold text-[var(--gray-text)]">
+                  +{assignees.length - 3}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <button
           type="button"

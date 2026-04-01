@@ -1,6 +1,8 @@
+import json
+from datetime import date
 from pathlib import Path
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -10,12 +12,15 @@ from app.board_service import (
     delete_board_for_user,
     duplicate_board_for_user,
     get_named_board_for_user,
+    get_named_board_with_access,
     get_or_create_board_for_user,
     list_boards_for_user,
     rename_board_for_user,
     save_board_for_user,
-    save_named_board_for_user,
+    save_named_board_with_access,
 )
+from app.db import log_activity, get_or_create_user_id
+from app.deps import get_current_user, get_current_user_optional, require_board_access
 from app.errors import error_payload
 
 router = APIRouter(prefix="/api")
@@ -66,13 +71,31 @@ class CreateBoardRequest(BaseModel):
 
 
 @router.post("/users/{username}/boards", response_model=NamedBoardResponse, status_code=201)
-def create_board(username: str, body: CreateBoardRequest, request: Request) -> NamedBoardResponse:
+def create_board(
+    username: str,
+    body: CreateBoardRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_user_optional),
+) -> NamedBoardResponse:
     if not body.name or not body.name.strip():
         return JSONResponse(
             status_code=400,
             content=error_payload("VALIDATION_ERROR", "Board name is required."),
         )
-    result = create_board_for_user(_db_path(request), username, body.name.strip())
+    db_path = _db_path(request)
+    result = create_board_for_user(db_path, username, body.name.strip())
+
+    if current_user:
+        log_activity(
+            db_path,
+            result["id"],
+            current_user["user_id"],
+            "board",
+            str(result["id"]),
+            "created",
+            {"name": body.name.strip()},
+        )
+
     return NamedBoardResponse(
         id=result["id"],
         name=result["name"],
@@ -83,8 +106,20 @@ def create_board(username: str, body: CreateBoardRequest, request: Request) -> N
 
 
 @router.get("/users/{username}/boards/{board_id}", response_model=NamedBoardResponse)
-def get_named_board(username: str, board_id: int, request: Request):
-    result = get_named_board_for_user(_db_path(request), username, board_id)
+def get_named_board(
+    username: str,
+    board_id: int,
+    request: Request,
+    current_user: dict = Depends(get_current_user_optional),
+):
+    db_path = _db_path(request)
+
+    # If authenticated, check member access (allows shared boards)
+    if current_user:
+        result = get_named_board_with_access(db_path, current_user["user_id"], board_id)
+    else:
+        result = get_named_board_for_user(db_path, username, board_id)
+
     if result is None:
         return JSONResponse(
             status_code=404,
@@ -100,14 +135,44 @@ def get_named_board(username: str, board_id: int, request: Request):
 
 
 @router.put("/users/{username}/boards/{board_id}", response_model=NamedBoardResponse)
-def put_named_board(username: str, board_id: int, board: BoardData, request: Request):
-    saved = save_named_board_for_user(_db_path(request), username, board_id, board)
-    if saved is None:
+def put_named_board(
+    username: str,
+    board_id: int,
+    board: BoardData,
+    request: Request,
+    current_user: dict = Depends(get_current_user_optional),
+):
+    db_path = _db_path(request)
+
+    if current_user:
+        require_board_access(board_id, current_user["user_id"], db_path, minimum_role="member")
+        saved = save_named_board_with_access(db_path, current_user["user_id"], board_id, board)
+        if saved is None:
+            return JSONResponse(
+                status_code=404,
+                content=error_payload("NOT_FOUND", "Board not found."),
+            )
+        log_activity(
+            db_path,
+            board_id,
+            current_user["user_id"],
+            "board",
+            str(board_id),
+            "updated",
+        )
+    else:
+        saved = save_board_for_user(db_path, username, board)
+
+    result = get_named_board_for_user(db_path, username, board_id)
+    if result is None:
+        # If board was saved by a member (non-owner), use member-aware lookup
+        if current_user:
+            result = get_named_board_with_access(db_path, current_user["user_id"], board_id)
+    if result is None:
         return JSONResponse(
             status_code=404,
             content=error_payload("NOT_FOUND", "Board not found."),
         )
-    result = get_named_board_for_user(_db_path(request), username, board_id)
     return NamedBoardResponse(
         id=result["id"],
         name=result["name"],
@@ -122,24 +187,47 @@ class RenameBoardRequest(BaseModel):
 
 
 @router.patch("/users/{username}/boards/{board_id}")
-def patch_named_board(username: str, board_id: int, body: RenameBoardRequest, request: Request) -> dict:
+def patch_named_board(
+    username: str,
+    board_id: int,
+    body: RenameBoardRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_user_optional),
+) -> dict:
     if not body.name or not body.name.strip():
         return JSONResponse(
             status_code=400,
             content=error_payload("VALIDATION_ERROR", "Board name is required."),
         )
-    found = rename_board_for_user(_db_path(request), username, board_id, body.name.strip())
+    db_path = _db_path(request)
+    found = rename_board_for_user(db_path, username, board_id, body.name.strip())
     if not found:
         return JSONResponse(
             status_code=404,
             content=error_payload("NOT_FOUND", "Board not found."),
         )
+    if current_user:
+        log_activity(
+            db_path,
+            board_id,
+            current_user["user_id"],
+            "board",
+            str(board_id),
+            "renamed",
+            {"name": body.name.strip()},
+        )
     return {"status": "ok", "name": body.name.strip()}
 
 
 @router.delete("/users/{username}/boards/{board_id}", status_code=204)
-def delete_named_board(username: str, board_id: int, request: Request):
-    deleted = delete_board_for_user(_db_path(request), username, board_id)
+def delete_named_board(
+    username: str,
+    board_id: int,
+    request: Request,
+    current_user: dict = Depends(get_current_user_optional),
+):
+    db_path = _db_path(request)
+    deleted = delete_board_for_user(db_path, username, board_id)
     if not deleted:
         return JSONResponse(
             status_code=404,
@@ -152,19 +240,35 @@ class DuplicateBoardRequest(BaseModel):
 
 
 @router.post("/users/{username}/boards/{board_id}/duplicate", response_model=NamedBoardResponse, status_code=201)
-def duplicate_board(username: str, board_id: int, body: DuplicateBoardRequest, request: Request):
-    """Duplicate a board under a new name."""
+def duplicate_board(
+    username: str,
+    board_id: int,
+    body: DuplicateBoardRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_user_optional),
+):
     name = body.name.strip() if body.name else ""
     if not name:
         return JSONResponse(
             status_code=400,
             content=error_payload("VALIDATION_ERROR", "Board name is required."),
         )
-    result = duplicate_board_for_user(_db_path(request), username, board_id, name)
+    db_path = _db_path(request)
+    result = duplicate_board_for_user(db_path, username, board_id, name)
     if result is None:
         return JSONResponse(
             status_code=404,
             content=error_payload("NOT_FOUND", "Board not found."),
+        )
+    if current_user:
+        log_activity(
+            db_path,
+            result["id"],
+            current_user["user_id"],
+            "board",
+            str(result["id"]),
+            "created",
+            {"name": name, "duplicated_from": board_id},
         )
     return NamedBoardResponse(
         id=result["id"],
@@ -176,9 +280,19 @@ def duplicate_board(username: str, board_id: int, body: DuplicateBoardRequest, r
 
 
 @router.get("/users/{username}/boards/{board_id}/stats")
-def get_board_stats(username: str, board_id: int, request: Request) -> dict:
-    """Return aggregate statistics for a board."""
-    result = get_named_board_for_user(_db_path(request), username, board_id)
+def get_board_stats(
+    username: str,
+    board_id: int,
+    request: Request,
+    current_user: dict = Depends(get_current_user_optional),
+) -> dict:
+    db_path = _db_path(request)
+
+    if current_user:
+        result = get_named_board_with_access(db_path, current_user["user_id"], board_id)
+    else:
+        result = get_named_board_for_user(db_path, username, board_id)
+
     if result is None:
         return JSONResponse(
             status_code=404,
@@ -186,7 +300,6 @@ def get_board_stats(username: str, board_id: int, request: Request) -> dict:
         )
     board = result["board"]
     cards = list(board.cards.values())
-    from datetime import date
     today = date.today().isoformat()
     stats = {
         "total_cards": len(cards),
@@ -200,9 +313,10 @@ def get_board_stats(username: str, board_id: int, request: Request) -> dict:
         },
         "overdue": sum(1 for c in cards if c.due_date and c.due_date < today),
         "has_due_date": sum(1 for c in cards if c.due_date),
-        "by_column": {
-            col.title: len(col.cardIds)
-            for col in board.columns
-        },
+        "by_column": {col.title: len(col.cardIds) for col in board.columns},
+        "checklist_items": sum(len(c.checklist) for c in cards),
+        "checklist_done": sum(
+            sum(1 for item in c.checklist if item.done) for c in cards
+        ),
     }
     return stats
