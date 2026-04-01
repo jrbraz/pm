@@ -1,4 +1,5 @@
 import type { Card } from "@/lib/kanban";
+import { PRIORITY_COLORS, PRIORITY_LABELS } from "@/lib/kanban";
 
 type KanbanCardPreviewProps = {
   card: Card;
@@ -21,7 +22,22 @@ export const KanbanCardPreview = ({ card }: KanbanCardPreviewProps) => (
         <h4 className="font-display text-sm font-semibold leading-snug text-[var(--navy-dark)]">
           {card.title}
         </h4>
-        <p className="mt-1 text-xs leading-5 text-[var(--gray-text)]">{card.details}</p>
+        {card.details && (
+          <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--gray-text)]">{card.details}</p>
+        )}
+        {card.priority && (
+          <div className="mt-1.5">
+            <span
+              className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+              style={{
+                backgroundColor: PRIORITY_COLORS[card.priority] + "1a",
+                color: PRIORITY_COLORS[card.priority],
+              }}
+            >
+              {PRIORITY_LABELS[card.priority]}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   </article>

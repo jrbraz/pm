@@ -7,9 +7,10 @@ import { PRIORITY_COLORS, PRIORITY_LABELS } from "@/lib/kanban";
 type KanbanCardProps = {
   card: Card;
   onDelete: (cardId: string) => void;
+  onEdit: (card: Card) => void;
 };
 
-export const KanbanCard = ({ card, onDelete }: KanbanCardProps) => {
+export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id });
 
@@ -28,16 +29,18 @@ export const KanbanCard = ({ card, onDelete }: KanbanCardProps) => {
       style={style}
       className={clsx(
         "group rounded-2xl border border-transparent bg-white px-3 py-3 shadow-[0_2px_8px_rgba(3,33,71,0.07)]",
-        "transition-all duration-150",
+        "cursor-pointer transition-all duration-150 hover:border-[var(--stroke)] hover:shadow-[0_4px_12px_rgba(3,33,71,0.1)]",
         isDragging && "opacity-60 shadow-[0_18px_32px_rgba(3,33,71,0.16)]"
       )}
       data-testid={`card-${card.id}`}
+      onClick={() => onEdit(card)}
     >
       <div className="flex items-start gap-2">
         <button
           type="button"
           className="mt-0.5 shrink-0 cursor-grab touch-none text-[var(--gray-text)] opacity-0 transition group-hover:opacity-40 active:cursor-grabbing"
           aria-label="Drag card"
+          onClick={(e) => e.stopPropagation()}
           {...attributes}
           {...listeners}
         >
@@ -55,7 +58,7 @@ export const KanbanCard = ({ card, onDelete }: KanbanCardProps) => {
             {card.title}
           </h4>
           {card.details && (
-            <p className="mt-1 text-xs leading-5 text-[var(--gray-text)]">{card.details}</p>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--gray-text)]">{card.details}</p>
           )}
 
           {/* Priority + labels + due date row */}
@@ -98,7 +101,10 @@ export const KanbanCard = ({ card, onDelete }: KanbanCardProps) => {
         </div>
         <button
           type="button"
-          onClick={() => onDelete(card.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(card.id);
+          }}
           className="mt-0.5 shrink-0 rounded-full p-1 text-[var(--gray-text)] opacity-0 transition group-hover:opacity-100 hover:bg-red-50 hover:text-red-400"
           aria-label={`Delete ${card.title}`}
         >

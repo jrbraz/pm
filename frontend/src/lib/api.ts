@@ -223,6 +223,29 @@ export const sendChat = async (
   return (await response.json()) as ChatResponse;
 };
 
+export type BoardStats = {
+  total_cards: number;
+  total_columns: number;
+  by_priority: Record<string, number>;
+  overdue: number;
+  has_due_date: number;
+  by_column: Record<string, number>;
+};
+
+export const fetchBoardStats = async (
+  username: string,
+  boardId: number
+): Promise<BoardStats> => {
+  const response = await fetch(
+    `/api/users/${encodeURIComponent(username)}/boards/${boardId}/stats`,
+    { cache: "no-store" }
+  );
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+  return (await response.json()) as BoardStats;
+};
+
 export const sendChatForBoard = async (
   username: string,
   boardId: number,

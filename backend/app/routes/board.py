@@ -144,3 +144,36 @@ def delete_named_board(username: str, board_id: int, request: Request):
             status_code=404,
             content=error_payload("NOT_FOUND", "Board not found."),
         )
+
+
+@router.get("/users/{username}/boards/{board_id}/stats")
+def get_board_stats(username: str, board_id: int, request: Request) -> dict:
+    """Return aggregate statistics for a board."""
+    result = get_named_board_for_user(_db_path(request), username, board_id)
+    if result is None:
+        return JSONResponse(
+            status_code=404,
+            content=error_payload("NOT_FOUND", "Board not found."),
+        )
+    board = result["board"]
+    cards = list(board.cards.values())
+    from datetime import date
+    today = date.today().isoformat()
+    stats = {
+        "total_cards": len(cards),
+        "total_columns": len(board.columns),
+        "by_priority": {
+            "critical": sum(1 for c in cards if c.priority == "critical"),
+            "high": sum(1 for c in cards if c.priority == "high"),
+            "medium": sum(1 for c in cards if c.priority == "medium"),
+            "low": sum(1 for c in cards if c.priority == "low"),
+            "none": sum(1 for c in cards if not c.priority),
+        },
+        "overdue": sum(1 for c in cards if c.due_date and c.due_date < today),
+        "has_due_date": sum(1 for c in cards if c.due_date),
+        "by_column": {
+            col.title: len(col.cardIds)
+            for col in board.columns
+        },
+    }
+    return stats
