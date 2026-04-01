@@ -66,9 +66,7 @@ export const ChatSidebar = ({ username, onBoardUpdated }: ChatSidebarProps) => {
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--gray-text)]">
           AI Assistant
         </p>
-        <p className="mt-1 text-sm font-semibold text-[var(--navy-dark)]">
-          Chat with your board
-        </p>
+        <p className="mt-1 text-sm font-semibold text-[var(--navy-dark)]">Chat with your board</p>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4" data-testid="chat-messages">
@@ -112,10 +110,7 @@ export const ChatSidebar = ({ username, onBoardUpdated }: ChatSidebarProps) => {
         </p>
       ) : null}
 
-      <form
-        onSubmit={handleSend}
-        className="border-t border-[var(--stroke)] px-4 py-3"
-      >
+      <form onSubmit={handleSend} className="border-t border-[var(--stroke)] px-4 py-3">
         <div className="flex gap-2">
           <input
             value={input}
@@ -128,10 +123,19 @@ export const ChatSidebar = ({ username, onBoardUpdated }: ChatSidebarProps) => {
           <button
             type="submit"
             disabled={isSending || !input.trim()}
-            className="rounded-xl bg-[var(--secondary-purple)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white transition hover:brightness-110 disabled:opacity-50"
+            className="flex shrink-0 items-center justify-center rounded-xl bg-[var(--secondary-purple)] p-2.5 text-white transition hover:brightness-110 disabled:opacity-50"
             data-testid="chat-send"
+            aria-label="Send message"
           >
-            Send
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M14 8H2M8 2l6 6-6 6"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
         </div>
       </form>

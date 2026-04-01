@@ -60,9 +60,7 @@ export const AuthGate = () => {
           <p className="mt-3 text-sm leading-6 text-[var(--gray-text)]">
             Use the MVP credentials to continue.
           </p>
-          <p className="mt-1 text-sm leading-6 text-[var(--primary-blue)]">
-            user / password
-          </p>
+          <p className="mt-1 text-sm leading-6 text-[var(--primary-blue)]">user / password</p>
 
           <form onSubmit={handleLogin} className="mt-6 space-y-4">
             <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)]">
@@ -89,9 +87,7 @@ export const AuthGate = () => {
             </label>
 
             {errorMessage ? (
-              <p className="text-sm font-medium text-[var(--secondary-purple)]">
-                {errorMessage}
-              </p>
+              <p className="text-sm font-medium text-[var(--secondary-purple)]">{errorMessage}</p>
             ) : null}
 
             <button
@@ -107,20 +103,23 @@ export const AuthGate = () => {
   }
 
   return (
-    <div className="relative flex min-h-screen">
-      <div className="relative flex-1">
-        <div className="absolute right-6 top-6 z-20">
+    <div className="flex min-h-screen">
+      {/* Board area — scrolls horizontally when columns are tight */}
+      <div className="relative min-w-0 flex-1 overflow-x-auto">
+        <div className="absolute right-6 top-5 z-20">
           <button
             type="button"
             onClick={handleLogout}
-            className="rounded-full border border-[var(--stroke)] bg-white/85 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--navy-dark)] shadow-[var(--shadow)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+            className="rounded-full border border-[var(--stroke)] bg-white/85 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--navy-dark)] shadow-[var(--shadow)] backdrop-blur transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
           >
             Log out
           </button>
         </div>
         <KanbanBoard username={VALID_USERNAME} refreshSignal={refreshSignal} />
       </div>
-      <div className="sticky top-0 h-screen w-[350px] shrink-0 p-4">
+
+      {/* Chat sidebar — fixed width, sticky to viewport height */}
+      <div className="sticky top-0 h-screen w-[340px] shrink-0 p-4">
         <ChatSidebar username={VALID_USERNAME} onBoardUpdated={handleBoardUpdated} />
       </div>
     </div>

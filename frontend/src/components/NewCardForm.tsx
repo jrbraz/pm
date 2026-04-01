@@ -23,7 +23,7 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
   return (
     <div className="mt-4">
       {isOpen ? (
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-2">
           <input
             value={formState.title}
             onChange={(event) =>
@@ -32,14 +32,15 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
             placeholder="Card title"
             className="w-full rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm font-medium text-[var(--navy-dark)] outline-none transition focus:border-[var(--primary-blue)]"
             required
+            autoFocus
           />
           <textarea
             value={formState.details}
             onChange={(event) =>
               setFormState((prev) => ({ ...prev, details: event.target.value }))
             }
-            placeholder="Details"
-            rows={3}
+            placeholder="Details (optional)"
+            rows={2}
             className="w-full resize-none rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm text-[var(--gray-text)] outline-none transition focus:border-[var(--primary-blue)]"
           />
           <div className="flex items-center gap-2">
@@ -47,7 +48,7 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
               type="submit"
               className="rounded-full bg-[var(--secondary-purple)] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:brightness-110"
             >
-              Add card
+              Add
             </button>
             <button
               type="button"
@@ -65,9 +66,12 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="w-full rounded-full border border-dashed border-[var(--stroke)] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--primary-blue)] transition hover:border-[var(--primary-blue)]"
+          className="flex w-full items-center justify-center gap-1.5 rounded-full border border-dashed border-[var(--stroke)] px-3 py-2 text-xs font-semibold text-[var(--primary-blue)] transition hover:border-[var(--primary-blue)] hover:bg-white"
         >
-          Add a card
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          Add card
         </button>
       )}
     </div>
