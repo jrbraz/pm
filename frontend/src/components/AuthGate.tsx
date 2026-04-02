@@ -23,6 +23,8 @@ export const AuthGate = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeBoardId, setActiveBoardId] = useState<number | null>(null);
   const [refreshSignal, setRefreshSignal] = useState(0);
+  const [showLeftPanel, setShowLeftPanel] = useState(true);
+  const [showRightPanel, setShowRightPanel] = useState(true);
 
   useEffect(() => {
     const storedToken = window.localStorage.getItem(TOKEN_KEY);
@@ -173,55 +175,99 @@ export const AuthGate = () => {
     <AuthContext.Provider value={{ token, username }}>
       <div className="flex h-screen overflow-hidden">
         {/* Left sidebar: board list */}
-        <aside className="flex w-52 shrink-0 flex-col overflow-y-auto border-r border-[var(--stroke)] bg-white px-2 py-4">
-          <div className="mb-4 px-2">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--gray-text)]">
-              Workspace
-            </p>
-            <p className="mt-1 truncate text-sm font-semibold text-[var(--navy-dark)]">
-              {username}
-            </p>
-          </div>
+        {showLeftPanel && (
+          <aside className="flex w-52 shrink-0 flex-col overflow-y-auto border-r border-[var(--stroke)] bg-white px-2 py-4">
+            <div className="mb-4 flex items-center justify-between px-2">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--gray-text)]">
+                  Workspace
+                </p>
+                <p className="mt-1 truncate text-sm font-semibold text-[var(--navy-dark)]">
+                  {username}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLeftPanel(false)}
+                className="rounded-lg p-1 text-[var(--gray-text)] transition hover:bg-[var(--surface)] hover:text-[var(--navy-dark)]"
+                title="Hide sidebar"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z" />
+                </svg>
+              </button>
+            </div>
 
-          {/* Dashboard link */}
-          <button
-            type="button"
-            onClick={() => setActiveBoardId(null)}
-            className={`mb-2 w-full rounded-xl px-2 py-1.5 text-left text-xs font-semibold transition ${
-              activeBoardId === null
-                ? "bg-[var(--surface)] text-[var(--navy-dark)]"
-                : "text-[var(--gray-text)] hover:text-[var(--navy-dark)]"
-            }`}
-          >
-            Dashboard
-          </button>
-
-          <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--gray-text)]">
-            Boards
-          </p>
-          <BoardSelector
-            username={username}
-            activeBoardId={activeBoardId}
-            onSelectBoard={setActiveBoardId}
-          />
-
-          <div className="mt-auto border-t border-[var(--stroke)] px-2 pt-3 pb-2">
+            {/* Dashboard link */}
             <button
               type="button"
-              onClick={() => void handleLogout()}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--surface)] px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)] transition hover:bg-red-50 hover:text-red-500"
+              onClick={() => setActiveBoardId(null)}
+              className={`mb-2 w-full rounded-xl px-2 py-1.5 text-left text-xs font-semibold transition ${
+                activeBoardId === null
+                  ? "bg-[var(--surface)] text-[var(--navy-dark)]"
+                  : "text-[var(--gray-text)] hover:text-[var(--navy-dark)]"
+              }`}
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M6 12.5a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v2a.5.5 0 0 1-1 0v-2A1.5 1.5 0 0 1 6.5 2h8A1.5 1.5 0 0 1 16 3.5v9a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 12.5v-2a.5.5 0 0 1 1 0v2z"/>
-                <path d="M.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L1.707 7.5H10.5a.5.5 0 0 1 0 1H1.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3z"/>
-              </svg>
-              Log out
+              Dashboard
             </button>
-          </div>
-        </aside>
+
+            <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--gray-text)]">
+              Boards
+            </p>
+            <BoardSelector
+              username={username}
+              activeBoardId={activeBoardId}
+              onSelectBoard={setActiveBoardId}
+            />
+
+            <div className="mt-auto border-t border-[var(--stroke)] px-2 pt-3 pb-2">
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--surface)] px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)] transition hover:bg-red-50 hover:text-red-500"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M6 12.5a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v2a.5.5 0 0 1-1 0v-2A1.5 1.5 0 0 1 6.5 2h8A1.5 1.5 0 0 1 16 3.5v9a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 12.5v-2a.5.5 0 0 1 1 0v2z"/>
+                  <path d="M.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L1.707 7.5H10.5a.5.5 0 0 1 0 1H1.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3z"/>
+                </svg>
+                Log out
+              </button>
+            </div>
+          </aside>
+        )}
 
         {/* Board area */}
         <div className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+          {/* Toggle buttons for collapsed panels */}
+          <div className="absolute left-2 top-2 z-10 flex gap-1">
+            {!showLeftPanel && (
+              <button
+                type="button"
+                onClick={() => setShowLeftPanel(true)}
+                className="rounded-xl border border-[var(--stroke)] bg-white p-2 text-[var(--gray-text)] shadow-sm transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+                title="Show workspace"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z" />
+                </svg>
+              </button>
+            )}
+          </div>
+          <div className="absolute right-2 top-2 z-10 flex gap-1">
+            {!showRightPanel && (
+              <button
+                type="button"
+                onClick={() => setShowRightPanel(true)}
+                className="rounded-xl border border-[var(--stroke)] bg-white p-2 text-[var(--gray-text)] shadow-sm transition hover:border-[var(--secondary-purple)] hover:text-[var(--secondary-purple)]"
+                title="Show AI assistant"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z" />
+                </svg>
+              </button>
+            )}
+          </div>
+
           {activeBoardId !== null ? (
             <KanbanBoard
               username={username}
@@ -234,13 +280,25 @@ export const AuthGate = () => {
         </div>
 
         {/* Chat sidebar */}
-        <div className="h-full w-[340px] shrink-0 p-4">
-          <ChatSidebar
-            username={username}
-            boardId={activeBoardId}
-            onBoardUpdated={handleBoardUpdated}
-          />
-        </div>
+        {showRightPanel && (
+          <div className="relative h-full w-[340px] shrink-0 p-4">
+            <button
+              type="button"
+              onClick={() => setShowRightPanel(false)}
+              className="absolute right-6 top-6 z-10 rounded-lg p-1 text-[var(--gray-text)] transition hover:bg-[var(--surface)] hover:text-[var(--navy-dark)]"
+              title="Hide AI assistant"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z" />
+              </svg>
+            </button>
+            <ChatSidebar
+              username={username}
+              boardId={activeBoardId}
+              onBoardUpdated={handleBoardUpdated}
+            />
+          </div>
+        )}
       </div>
     </AuthContext.Provider>
   );
