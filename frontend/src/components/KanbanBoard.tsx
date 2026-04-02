@@ -375,11 +375,11 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
   }
 
   return (
-    <div className="relative">
+    <div className="relative flex h-full flex-col overflow-hidden">
       <div className="pointer-events-none absolute left-0 top-0 h-[420px] w-[420px] -translate-x-1/3 -translate-y-1/3 rounded-full bg-[radial-gradient(circle,_rgba(32,157,215,0.2)_0%,_rgba(32,157,215,0.04)_55%,_transparent_70%)]" />
       <div className="pointer-events-none absolute bottom-0 right-0 h-[520px] w-[520px] translate-x-1/4 translate-y-1/4 rounded-full bg-[radial-gradient(circle,_rgba(117,57,145,0.15)_0%,_rgba(117,57,145,0.04)_55%,_transparent_75%)]" />
 
-      <main className="relative flex min-h-screen flex-col gap-4 px-6 pb-16 pt-8">
+      <main className="relative flex min-h-0 flex-1 flex-col gap-4 px-6 pb-4 pt-8">
         <header className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[var(--gray-text)]">
@@ -467,9 +467,9 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="overflow-x-auto pb-2">
+          <div className="min-h-0 flex-1 overflow-x-auto pb-2">
             <div
-              className="flex gap-4"
+              className="flex h-full gap-4"
               style={{ minWidth: `${(board.columns.length + 1) * 220}px` }}
             >
               {board.columns.map((column) => {

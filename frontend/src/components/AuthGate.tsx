@@ -171,9 +171,9 @@ export const AuthGate = () => {
 
   return (
     <AuthContext.Provider value={{ token, username }}>
-      <div className="flex min-h-screen">
+      <div className="flex h-screen overflow-hidden">
         {/* Left sidebar: board list */}
-        <aside className="flex w-52 shrink-0 flex-col border-r border-[var(--stroke)] bg-white px-2 py-4">
+        <aside className="flex w-52 shrink-0 flex-col overflow-y-auto border-r border-[var(--stroke)] bg-white px-2 py-4">
           <div className="mb-4 px-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--gray-text)]">
               Workspace
@@ -221,7 +221,7 @@ export const AuthGate = () => {
         </aside>
 
         {/* Board area */}
-        <div className="relative min-w-0 flex-1 overflow-x-auto">
+        <div className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
           {activeBoardId !== null ? (
             <KanbanBoard
               username={username}
@@ -234,7 +234,7 @@ export const AuthGate = () => {
         </div>
 
         {/* Chat sidebar */}
-        <div className="sticky top-0 h-screen w-[340px] shrink-0 p-4">
+        <div className="h-full w-[340px] shrink-0 p-4">
           <ChatSidebar
             username={username}
             boardId={activeBoardId}
