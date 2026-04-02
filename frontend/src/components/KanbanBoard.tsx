@@ -537,14 +537,14 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
                 );
               })}
               {/* Add column button */}
-              <div style={{ flex: "0 0 auto", minWidth: "200px" }}>
+              <div style={{ flex: "0 0 auto" }}>
                 <button
                   type="button"
                   onClick={handleAddColumn}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--stroke)] bg-white/50 text-xs font-medium text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-dashed border-[var(--stroke)] bg-white/70 text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+                  title="Add column"
                 >
-                  <PlusIcon />
-                  Add Column
+                  <PlusIcon size={16} />
                 </button>
               </div>
             </div>

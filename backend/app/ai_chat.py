@@ -5,23 +5,24 @@ from pydantic import BaseModel, ValidationError
 from app.ai_client import chat_completion
 from app.board_models import BoardData
 
-SYSTEM_PROMPT = """\
+SYSTEM_PROMPT_TEMPLATE = """\
 You are an AI assistant for a Kanban board project management app.
 The user can ask you to create, edit, move, or delete cards and columns on their board.
 
-You will receive the current board state as JSON and the user's message.
+IMPORTANT: The current board state is provided below. You already have all the data you need.
+Do NOT ask the user to provide the board state -- it is included in this message.
 
 You MUST respond with valid JSON in this exact format:
-{
+{{
   "reply": "Your conversational response to the user.",
   "board_update": null
-}
+}}
 
 If the user asks you to modify the board, include the full updated board state:
-{
+{{
   "reply": "Your conversational response describing what you changed.",
-  "board_update": { "columns": [...], "cards": {...} }
-}
+  "board_update": {{ "columns": [...], "cards": {{...}} }}
+}}
 
 Rules for board updates:
 - "columns" is a list of objects with "id" (string), "title" (string), and "cardIds" (list of strings).
@@ -40,7 +41,11 @@ Rules for board updates:
 - When the user asks to add a label or tag, add it to the card's labels array.
 - If the user's request is unclear, ask for clarification and set board_update to null.
 
-IMPORTANT: Respond ONLY with the JSON object. No markdown, no code fences, no extra text.\
+IMPORTANT: Respond ONLY with the JSON object. No markdown, no code fences, no extra text.
+
+--- CURRENT BOARD STATE (you already have this data) ---
+{board_json}
+--- END BOARD STATE ---\
 """
 
 
@@ -66,9 +71,9 @@ def build_messages(
     user_message: str,
     history: list[dict[str, str]],
 ) -> list[dict[str, str]]:
+    system_content = SYSTEM_PROMPT_TEMPLATE.format(board_json=board.model_dump_json())
     messages: list[dict[str, str]] = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "system", "content": f"Current board state:\n{board.model_dump_json()}"},
+        {"role": "system", "content": system_content},
     ]
     trimmed_history = history[-MAX_HISTORY_MESSAGES:]
     messages.extend(trimmed_history)

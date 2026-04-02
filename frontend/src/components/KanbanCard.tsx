@@ -53,10 +53,10 @@ export const KanbanCard = ({
       style={style}
       className={clsx(
         "group rounded-2xl border bg-white px-3 py-3 shadow-[0_2px_8px_rgba(3,33,71,0.07)]",
-        "cursor-pointer transition-all duration-150 hover:border-[var(--stroke)] hover:shadow-[0_4px_12px_rgba(3,33,71,0.1)]",
+        "cursor-pointer transition-all duration-150 hover:border-[#b0b8c4] hover:shadow-[0_4px_12px_rgba(3,33,71,0.1)]",
         isOverdue
           ? "border-red-200 bg-red-50/40 shadow-[0_4px_14px_rgba(229,62,62,0.08)]"
-          : "border-transparent",
+          : "border-[#d0d5dd]",
         isDragging && "opacity-60 shadow-[0_18px_32px_rgba(3,33,71,0.16)]"
       )}
       data-testid={`card-${card.id}`}

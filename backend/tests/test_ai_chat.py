@@ -24,10 +24,11 @@ class TestBuildMessages:
         board = _minimal_board()
         messages = build_messages(board, "Hello", [])
 
+        # Single system message with both prompt and board state
         assert messages[0]["role"] == "system"
         assert "Kanban" in messages[0]["content"]
-        assert messages[1]["role"] == "system"
-        assert "col-1" in messages[1]["content"]
+        assert "col-1" in messages[0]["content"]
+        assert "CURRENT BOARD STATE" in messages[0]["content"]
         assert messages[-1] == {"role": "user", "content": "Hello"}
 
     def test_includes_history(self):
@@ -38,9 +39,10 @@ class TestBuildMessages:
         ]
         messages = build_messages(board, "what next?", history)
 
-        assert messages[2] == {"role": "user", "content": "hi"}
-        assert messages[3] == {"role": "assistant", "content": "hello"}
-        assert messages[4] == {"role": "user", "content": "what next?"}
+        # 1 system + 2 history + 1 user
+        assert messages[1] == {"role": "user", "content": "hi"}
+        assert messages[2] == {"role": "assistant", "content": "hello"}
+        assert messages[3] == {"role": "user", "content": "what next?"}
 
     def test_truncates_long_history(self):
         from app.ai_chat import MAX_HISTORY_MESSAGES
@@ -49,9 +51,9 @@ class TestBuildMessages:
         history = [{"role": "user", "content": f"msg-{i}"} for i in range(30)]
         messages = build_messages(board, "latest", history)
 
-        # 2 system + MAX_HISTORY_MESSAGES history + 1 user
-        assert len(messages) == 2 + MAX_HISTORY_MESSAGES + 1
-        assert messages[2]["content"] == f"msg-{30 - MAX_HISTORY_MESSAGES}"
+        # 1 system + MAX_HISTORY_MESSAGES history + 1 user
+        assert len(messages) == 1 + MAX_HISTORY_MESSAGES + 1
+        assert messages[1]["content"] == f"msg-{30 - MAX_HISTORY_MESSAGES}"
         assert messages[-1]["content"] == "latest"
 
 

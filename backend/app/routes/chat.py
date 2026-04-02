@@ -63,10 +63,30 @@ def chat(
             "reply": result.reply,
             "board_updated": result.board_updated,
         }
-    except (httpx.HTTPStatusError, json.JSONDecodeError, ValidationError, RuntimeError) as exc:
+    except RuntimeError as exc:
         return JSONResponse(
             status_code=502,
-            content=error_payload("AI_ERROR", str(exc)),
+            content=error_payload("AI_ERROR", f"AI configuration error: {exc}"),
+        )
+    except httpx.TimeoutException:
+        return JSONResponse(
+            status_code=502,
+            content=error_payload("AI_ERROR", "AI request timed out. Please try again."),
+        )
+    except httpx.HTTPStatusError as exc:
+        return JSONResponse(
+            status_code=502,
+            content=error_payload("AI_ERROR", f"AI service returned an error (HTTP {exc.response.status_code}). Please try again."),
+        )
+    except json.JSONDecodeError:
+        return JSONResponse(
+            status_code=502,
+            content=error_payload("AI_ERROR", "AI returned an invalid response. Please try again."),
+        )
+    except ValidationError:
+        return JSONResponse(
+            status_code=502,
+            content=error_payload("AI_ERROR", "AI returned a malformed board update. The reply was discarded."),
         )
 
 
@@ -105,8 +125,23 @@ def chat_for_board(
             "reply": result.reply,
             "board_updated": result.board_updated,
         }
-    except (httpx.HTTPStatusError, json.JSONDecodeError, ValidationError, RuntimeError) as exc:
+    except RuntimeError as exc:
         return JSONResponse(
             status_code=502,
-            content=error_payload("AI_ERROR", str(exc)),
+            content=error_payload("AI_ERROR", f"AI configuration error: {exc}"),
+        )
+    except httpx.HTTPStatusError as exc:
+        return JSONResponse(
+            status_code=502,
+            content=error_payload("AI_ERROR", f"AI service returned an error (HTTP {exc.response.status_code}). Please try again."),
+        )
+    except json.JSONDecodeError:
+        return JSONResponse(
+            status_code=502,
+            content=error_payload("AI_ERROR", "AI returned an invalid response. Please try again."),
+        )
+    except ValidationError:
+        return JSONResponse(
+            status_code=502,
+            content=error_payload("AI_ERROR", "AI returned a malformed board update. The reply was discarded."),
         )
