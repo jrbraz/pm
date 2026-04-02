@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { sendChat, sendChatForBoard, type ChatMessage } from "@/lib/api";
+import { sendChatForBoard, type ChatMessage } from "@/lib/api";
+import { useAuth } from "@/components/AuthContext";
 
 type DisplayMessage = ChatMessage & { id: string };
 
@@ -15,6 +16,7 @@ type ChatSidebarProps = {
 };
 
 export const ChatSidebar = ({ username, boardId, onBoardUpdated }: ChatSidebarProps) => {
+  const { token } = useAuth();
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -39,9 +41,10 @@ export const ChatSidebar = ({ username, boardId, onBoardUpdated }: ChatSidebarPr
       setError(null);
 
       try {
-        const response = boardId != null
-          ? await sendChatForBoard(username, boardId, trimmed, messages)
-          : await sendChat(username, trimmed, messages);
+        if (boardId == null) {
+          throw new Error("No board selected.");
+        }
+        const response = await sendChatForBoard(username, boardId, trimmed, messages, token || undefined);
         const assistantMessage: DisplayMessage = {
           id: msgId(),
           role: "assistant",

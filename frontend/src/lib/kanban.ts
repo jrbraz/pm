@@ -176,9 +176,8 @@ export const moveCard = (
 };
 
 export const createId = (prefix: string) => {
-  const randomPart = Math.random().toString(36).slice(2, 8);
-  const timePart = Date.now().toString(36);
-  return `${prefix}-${randomPart}${timePart}`;
+  const uuid = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  return `${prefix}-${uuid}`;
 };
 
 export const PRIORITY_COLORS: Record<Priority, string> = {

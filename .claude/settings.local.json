@@ -34,7 +34,11 @@
       "Skill(update-config:*)",
       "Bash(winget install:*)",
       "Bash(winget search:*)",
-      "Bash('/c/Users/333327/AppData/Local/Microsoft/WinGet/Links/jq.exe' --version)"
+      "Bash('/c/Users/333327/AppData/Local/Microsoft/WinGet/Links/jq.exe' --version)",
+      "Bash(python -c \"from app.db import initialize_database, get_or_create_user_id, BoardConflictError, log_activity, create_comment, cleanup_expired_sessions; print\\('All imports OK'\\)\")",
+      "Read(//Users/jrbrazcestari/.claude/projects/-Users-jrbrazcestari-dev-source-pm/87eadd35-b2fe-4d35-a0cc-dd8fcd76dcc9/subagents/**)",
+      "Bash(uv add:*)",
+      "Bash(ls -1 /Users/jrbrazcestari/dev-source/pm/backend/tests/test_*.py)"
     ]
   }
 }

@@ -23,6 +23,7 @@ class Card(BaseModel):
 class Column(BaseModel):
     id: str = Field(min_length=1)
     title: str = Field(min_length=1)
+    # camelCase to match the frontend BoardData TypeScript type.
     cardIds: list[str]
 
 

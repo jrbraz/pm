@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from app.db import (
     create_comment,
     delete_comment,
+    get_board_owner_id,
     get_comment_by_id,
     get_comments_for_card,
     log_activity,
@@ -144,7 +145,6 @@ def delete_comment_route(
         )
 
     # Comment author OR board owner can delete
-    from app.db import get_board_owner_id
     owner_id = get_board_owner_id(db_path, board_id)
     if comment["user_id"] != current_user["user_id"] and owner_id != current_user["user_id"]:
         return JSONResponse(

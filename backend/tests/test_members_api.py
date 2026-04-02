@@ -13,8 +13,8 @@ def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _create_board(client: TestClient, username: str, name: str = "Test Board") -> int:
-    r = client.post(f"/api/users/{username}/boards", json={"name": name})
+def _create_board(client: TestClient, username: str, token: str, name: str = "Test Board") -> int:
+    r = client.post(f"/api/users/{username}/boards", json={"name": name}, headers=_auth(token))
     assert r.status_code == 201
     return r.json()["id"]
 
@@ -30,7 +30,7 @@ def test_list_members_requires_auth(client: TestClient) -> None:
 
 def test_list_members_empty_board(client: TestClient) -> None:
     token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", token)
     r = client.get(f"/api/users/alice/boards/{board_id}/members", headers=_auth(token))
     assert r.status_code == 200
     data = r.json()
@@ -56,7 +56,7 @@ def test_add_member_requires_auth(client: TestClient) -> None:
 def test_add_member_success(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     _register_and_login(client, "bob")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     r = client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -72,7 +72,7 @@ def test_add_member_success(client: TestClient) -> None:
 def test_add_member_viewer_role(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     _register_and_login(client, "charlie")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     r = client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -86,7 +86,7 @@ def test_add_member_viewer_role(client: TestClient) -> None:
 def test_add_member_appears_in_list(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     _register_and_login(client, "bob")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -102,7 +102,7 @@ def test_add_member_appears_in_list(client: TestClient) -> None:
 
 def test_add_nonexistent_user_returns_404(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     r = client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -115,7 +115,7 @@ def test_add_nonexistent_user_returns_404(client: TestClient) -> None:
 def test_add_duplicate_member_returns_409(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     _register_and_login(client, "bob")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -133,7 +133,7 @@ def test_add_duplicate_member_returns_409(client: TestClient) -> None:
 def test_non_owner_cannot_add_member(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     bob_token = _register_and_login(client, "bob")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     # Add bob as member
     client.post(
@@ -154,7 +154,7 @@ def test_non_owner_cannot_add_member(client: TestClient) -> None:
 
 def test_owner_cannot_be_added_as_member(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     r = client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -171,7 +171,7 @@ def test_owner_cannot_be_added_as_member(client: TestClient) -> None:
 def test_update_member_role(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     _register_and_login(client, "bob")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -192,7 +192,7 @@ def test_update_role_requires_owner(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     bob_token = _register_and_login(client, "bob")
     _register_and_login(client, "charlie")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -220,7 +220,7 @@ def test_update_role_requires_owner(client: TestClient) -> None:
 def test_remove_member(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     _register_and_login(client, "bob")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -240,7 +240,7 @@ def test_remove_member(client: TestClient) -> None:
 def test_member_can_remove_themselves(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     bob_token = _register_and_login(client, "bob")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -258,7 +258,7 @@ def test_member_cannot_remove_other_member(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     bob_token = _register_and_login(client, "bob")
     _register_and_login(client, "charlie")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -285,7 +285,7 @@ def test_member_cannot_remove_other_member(client: TestClient) -> None:
 def test_member_can_read_board(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     bob_token = _register_and_login(client, "bob")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -303,7 +303,7 @@ def test_member_can_read_board(client: TestClient) -> None:
 def test_member_can_save_board(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     bob_token = _register_and_login(client, "bob")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -330,7 +330,7 @@ def test_member_can_save_board(client: TestClient) -> None:
 def test_viewer_cannot_save_board(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     charlie_token = _register_and_login(client, "charlie")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -353,9 +353,9 @@ def test_viewer_cannot_save_board(client: TestClient) -> None:
 
 
 def test_non_member_cannot_read_board_with_token(client: TestClient) -> None:
-    _register_and_login(client, "alice")
+    alice_token = _register_and_login(client, "alice")
     dave_token = _register_and_login(client, "dave")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     r = client.get(
         f"/api/users/alice/boards/{board_id}",

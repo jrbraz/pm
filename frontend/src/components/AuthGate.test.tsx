@@ -23,6 +23,22 @@ vi.mock("@/components/DashboardPage", () => ({
 const mockFetch = (overrides: Record<string, unknown> = {}) => {
   vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
     const url = String(input);
+    if (url.includes("/api/auth/register")) {
+      if (overrides.registerFail) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ error: { code: "REGISTRATION_ERROR", message: "Username is already taken." } }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({ username: "newuser", id: 1 }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    }
     if (url.includes("/api/auth/login")) {
       const body = overrides.loginFail
         ? JSON.stringify({ error: { code: "AUTH_ERROR", message: "Invalid username or password." } })
@@ -60,7 +76,7 @@ describe("AuthGate", () => {
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText(/username/i), "testuser");
-    await user.type(screen.getByLabelText(/password/i), "testpass");
+    await user.type(screen.getByLabelText(/password/i), "testpass1");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() =>
@@ -74,7 +90,7 @@ describe("AuthGate", () => {
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText(/username/i), "testuser");
-    await user.type(screen.getByLabelText(/password/i), "testpass");
+    await user.type(screen.getByLabelText(/password/i), "testpass1");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => screen.getByTestId("board-selector"));
@@ -91,7 +107,7 @@ describe("AuthGate", () => {
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText(/username/i), "wrong");
-    await user.type(screen.getByLabelText(/password/i), "creds");
+    await user.type(screen.getByLabelText(/password/i), "badcreds1");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() =>
@@ -108,7 +124,7 @@ describe("AuthGate", () => {
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText(/username/i), "testuser");
-    await user.type(screen.getByLabelText(/password/i), "testpass");
+    await user.type(screen.getByLabelText(/password/i), "testpass1");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() =>
@@ -122,7 +138,7 @@ describe("AuthGate", () => {
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText(/username/i), "testuser");
-    await user.type(screen.getByLabelText(/password/i), "testpass");
+    await user.type(screen.getByLabelText(/password/i), "testpass1");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => screen.getByRole("button", { name: /log out/i }));
@@ -134,5 +150,67 @@ describe("AuthGate", () => {
       ).toBeInTheDocument()
     );
     expect(window.localStorage.getItem("pm-token")).toBeNull();
+  });
+
+  it("restores session from localStorage", async () => {
+    window.localStorage.setItem("pm-token", "stored-token");
+    window.localStorage.setItem("pm-username", "storeduser");
+
+    render(<AuthGate />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("dashboard-page")).toBeInTheDocument()
+    );
+    expect(screen.queryByRole("heading", { name: /project workspace/i })).not.toBeInTheDocument();
+  });
+
+  it("switches to register form and back", async () => {
+    render(<AuthGate />);
+    const user = userEvent.setup();
+
+    await waitFor(() => screen.getByText(/no account/i));
+    await user.click(screen.getByRole("button", { name: /register/i }));
+
+    expect(screen.getByRole("button", { name: /create account/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    expect(screen.getByRole("button", { name: /sign in/i })).toBeInTheDocument();
+  });
+
+  it("completes register + login flow", async () => {
+    mockFetch();
+    render(<AuthGate />);
+    const user = userEvent.setup();
+
+    // Switch to register
+    await waitFor(() => screen.getByText(/no account/i));
+    await user.click(screen.getByRole("button", { name: /register/i }));
+
+    await user.type(screen.getByLabelText(/username/i), "newuser");
+    await user.type(screen.getByLabelText(/password/i), "newpass12");
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+
+    // After register, app should auto-login and show dashboard
+    await waitFor(() =>
+      expect(screen.getByTestId("dashboard-page")).toBeInTheDocument()
+    );
+    expect(window.localStorage.getItem("pm-token")).toBe("test-token-123");
+  });
+
+  it("shows error on duplicate registration", async () => {
+    mockFetch({ registerFail: true });
+    render(<AuthGate />);
+    const user = userEvent.setup();
+
+    await waitFor(() => screen.getByText(/no account/i));
+    await user.click(screen.getByRole("button", { name: /register/i }));
+
+    await user.type(screen.getByLabelText(/username/i), "taken");
+    await user.type(screen.getByLabelText(/password/i), "password123");
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/already taken/i)).toBeInTheDocument()
+    );
   });
 });

@@ -42,8 +42,8 @@ def register_user(db_path: Path, username: str, password: str) -> dict:
     """Register a new user. Raises ValueError on duplicate username."""
     if not username or len(username) < 2:
         raise ValueError("Username must be at least 2 characters.")
-    if not password or len(password) < 4:
-        raise ValueError("Password must be at least 4 characters.")
+    if not password or len(password) < 8:
+        raise ValueError("Password must be at least 8 characters.")
     password_hash = hash_password(password)
     user_id = create_user(db_path, username, password_hash)
     return {"id": user_id, "username": username}
@@ -55,11 +55,11 @@ def login_user(db_path: Path, username: str, password: str) -> str:
     if user is None:
         raise ValueError("Invalid credentials.")
     stored_hash = user.get("password_hash")
-    # Allow legacy users without password (created via get_or_create_user_id)
-    if stored_hash and not verify_password(password, stored_hash):
-        raise ValueError("Invalid credentials.")
-    if not stored_hash and password != "password":
-        # Legacy user - only allow default password
+    if not stored_hash:
+        # Legacy user without a password hash cannot log in.
+        # They must be re-registered with a password.
+        raise ValueError("Account requires password reset. Please register again.")
+    if not verify_password(password, stored_hash):
         raise ValueError("Invalid credentials.")
 
     token = generate_token()

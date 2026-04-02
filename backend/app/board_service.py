@@ -189,19 +189,30 @@ def save_named_board_with_access(
     return board
 
 
+EMPTY_BOARD = BoardData(
+    columns=[
+        {"id": "col-backlog", "title": "Backlog", "cardIds": []},
+        {"id": "col-progress", "title": "In Progress", "cardIds": []},
+        {"id": "col-done", "title": "Done", "cardIds": []},
+    ],
+    cards={},
+)
+
+
 def create_board_for_user(db_path: Path, username: str, name: str) -> dict:
     """Create a new board for a user. Returns board summary dict."""
     user_id = get_or_create_user_id(db_path, username)
     existing = get_boards_for_user(db_path, user_id)
     is_first = len(existing) == 0
+    board_data = DEFAULT_BOARD if is_first else EMPTY_BOARD
     board_id = create_board(
-        db_path, user_id, name, DEFAULT_BOARD.model_dump_json(), is_default=is_first
+        db_path, user_id, name, board_data.model_dump_json(), is_default=is_first
     )
     return {
         "id": board_id,
         "name": name,
         "is_default": is_first,
-        "board": DEFAULT_BOARD,
+        "board": board_data,
     }
 
 

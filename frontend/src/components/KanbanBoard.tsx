@@ -15,9 +15,12 @@ import { KanbanCardPreview } from "@/components/KanbanCardPreview";
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { CardDetailPanel } from "@/components/CardDetailPanel";
 import { BoardSettingsPanel } from "@/components/BoardSettingsPanel";
+import { BoardStatsBar } from "@/components/BoardStatsBar";
+import { BoardFilterBar } from "@/components/BoardFilterBar";
+import { PlusIcon, GearIcon } from "@/components/Icons";
 import { fetchBoardMembers, fetchNamedBoard, saveNamedBoard } from "@/lib/api";
+import { useDebouncedCallback } from "@/lib/useDebounce";
 import { createId, moveCard, type BoardData, type Card, type BoardMember, type Priority } from "@/lib/kanban";
-import { PRIORITY_COLORS, PRIORITY_LABELS } from "@/lib/kanban";
 import { useAuth } from "@/components/AuthContext";
 
 type KanbanBoardProps = {
@@ -40,6 +43,7 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPriority, setFilterPriority] = useState<Priority | null>(null);
   const [filterLabel, setFilterLabel] = useState("");
+  const [externalUpdate, setExternalUpdate] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -78,9 +82,9 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
 
   useEffect(() => {
     if (refreshSignal) {
-      void loadBoard();
+      setExternalUpdate(true);
     }
-  }, [refreshSignal, loadBoard]);
+  }, [refreshSignal]);
 
   const persistBoard = useCallback(
     async (nextBoard: BoardData) => {
@@ -98,6 +102,11 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
     [username, boardId, token]
   );
 
+  const debouncedPersist = useDebouncedCallback(
+    (nextBoard: BoardData) => { void persistBoard(nextBoard); },
+    500,
+  );
+
   const boardRef = useRef(board);
   boardRef.current = board;
 
@@ -107,9 +116,9 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
       if (!currentBoard) return;
       const nextBoard = updateFn(currentBoard);
       setBoard(nextBoard);
-      void persistBoard(nextBoard);
+      debouncedPersist(nextBoard);
     },
-    [persistBoard]
+    [debouncedPersist]
   );
 
   // Derived: all unique labels in this board
@@ -291,7 +300,18 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
     }));
   };
 
-  const hasActiveFilter = searchQuery || filterPriority || filterLabel;
+  const hasActiveFilter = !!(searchQuery || filterPriority || filterLabel);
+
+  const handleClearFilters = useCallback(() => {
+    setSearchQuery("");
+    setFilterPriority(null);
+    setFilterLabel("");
+  }, []);
+
+  const handleAcceptExternalUpdate = useCallback(() => {
+    setExternalUpdate(false);
+    void loadBoard();
+  }, [loadBoard]);
 
   if (isLoading) {
     return (
@@ -322,8 +342,6 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
       </main>
     );
   }
-
-  const PRIORITIES: Priority[] = ["critical", "high", "medium", "low"];
 
   return (
     <div className="relative">
@@ -362,137 +380,55 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
               className="rounded-xl border border-[var(--stroke)] bg-white p-2 text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
               title="Board settings"
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z" />
-                <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.465l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z" />
-              </svg>
+              <GearIcon />
             </button>
           </div>
         </header>
 
-        {/* Stats row */}
-        {boardStats && boardStats.total > 0 && (
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-full border border-[var(--stroke)] bg-white px-3 py-1 text-xs font-semibold text-[var(--navy-dark)]">
-              {boardStats.total} cards
-            </span>
-            {boardStats.overdue > 0 && (
-              <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-500">
-                {boardStats.overdue} overdue
-              </span>
-            )}
-            {boardStats.byPriority.critical > 0 && (
-              <span
-                className="rounded-full px-3 py-1 text-xs font-semibold"
-                style={{ backgroundColor: PRIORITY_COLORS.critical + "1a", color: PRIORITY_COLORS.critical }}
-              >
-                {boardStats.byPriority.critical} critical
-              </span>
-            )}
-            {boardStats.byPriority.high > 0 && (
-              <span
-                className="rounded-full px-3 py-1 text-xs font-semibold"
-                style={{ backgroundColor: PRIORITY_COLORS.high + "1a", color: PRIORITY_COLORS.high }}
-              >
-                {boardStats.byPriority.high} high
-              </span>
-            )}
-            {members.length > 0 && (
-              <div className="flex items-center gap-1">
-                {[username, ...members.map((m) => m.username)].slice(0, 4).map((m) => (
-                  <div
-                    key={m}
-                    className="flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-bold text-white"
-                    style={{ backgroundColor: "var(--primary-blue)" }}
-                    title={m}
-                  >
-                    {m.slice(0, 2).toUpperCase()}
-                  </div>
-                ))}
-                {members.length > 3 && (
-                  <span className="text-[10px] font-semibold text-[var(--gray-text)]">
-                    +{members.length - 3}
-                  </span>
-                )}
-              </div>
-            )}
+        {/* External update notification (4.3) */}
+        {externalUpdate && (
+          <div className="flex items-center gap-3 rounded-xl border border-[var(--primary-blue)] bg-blue-50 px-4 py-2">
+            <p className="flex-1 text-xs font-medium text-[var(--navy-dark)]">
+              The board was updated externally (via AI chat). Reload to see the latest changes.
+            </p>
+            <button
+              type="button"
+              onClick={handleAcceptExternalUpdate}
+              className="shrink-0 rounded-full bg-[var(--primary-blue)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition hover:brightness-110"
+            >
+              Reload
+            </button>
+            <button
+              type="button"
+              onClick={() => setExternalUpdate(false)}
+              className="shrink-0 text-xs font-medium text-[var(--gray-text)] hover:text-[var(--navy-dark)]"
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
-        {/* Filter bar */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[180px] max-w-xs">
-            <svg
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--gray-text)]"
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="currentColor"
-            >
-              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.44 1.156a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z" />
-            </svg>
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search cards..."
-              className="w-full rounded-xl border border-[var(--stroke)] bg-white py-1.5 pl-8 pr-3 text-xs text-[var(--navy-dark)] outline-none transition focus:border-[var(--primary-blue)]"
-            />
-          </div>
+        {boardStats && (
+          <BoardStatsBar
+            total={boardStats.total}
+            overdue={boardStats.overdue}
+            byPriority={boardStats.byPriority}
+            ownerUsername={username}
+            members={members}
+          />
+        )}
 
-          {/* Priority filter pills */}
-          <div className="flex items-center gap-1">
-            {PRIORITIES.map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setFilterPriority(filterPriority === p ? null : p)}
-                className="rounded-full border px-2.5 py-1 text-[10px] font-semibold transition"
-                style={
-                  filterPriority === p
-                    ? {
-                        backgroundColor: PRIORITY_COLORS[p] + "22",
-                        color: PRIORITY_COLORS[p],
-                        borderColor: PRIORITY_COLORS[p] + "66",
-                      }
-                    : {
-                        borderColor: PRIORITY_COLORS[p] + "33",
-                        color: PRIORITY_COLORS[p] + "99",
-                      }
-                }
-              >
-                {PRIORITY_LABELS[p]}
-              </button>
-            ))}
-          </div>
-
-          {/* Label filter */}
-          {allLabels.length > 0 && (
-            <select
-              value={filterLabel}
-              onChange={(e) => setFilterLabel(e.target.value)}
-              className="rounded-xl border border-[var(--stroke)] bg-white px-2 py-1.5 text-xs text-[var(--navy-dark)] outline-none focus:border-[var(--primary-blue)]"
-            >
-              <option value="">All labels</option>
-              {allLabels.map((l) => (
-                <option key={l} value={l}>{l}</option>
-              ))}
-            </select>
-          )}
-
-          {hasActiveFilter && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery("");
-                setFilterPriority(null);
-                setFilterLabel("");
-              }}
-              className="rounded-xl border border-[var(--stroke)] px-2.5 py-1.5 text-xs font-medium text-[var(--gray-text)] transition hover:text-[var(--navy-dark)]"
-            >
-              Clear
-            </button>
-          )}
-        </div>
+        <BoardFilterBar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          filterPriority={filterPriority}
+          onFilterPriorityChange={setFilterPriority}
+          filterLabel={filterLabel}
+          onFilterLabelChange={setFilterLabel}
+          allLabels={allLabels}
+          hasActiveFilter={hasActiveFilter}
+          onClearFilters={handleClearFilters}
+        />
 
         <DndContext
           sensors={sensors}
@@ -535,9 +471,7 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
                   onClick={handleAddColumn}
                   className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--stroke)] bg-white/50 text-xs font-semibold text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
                 >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z" />
-                  </svg>
+                  <PlusIcon />
                   Add Column
                 </button>
               </div>

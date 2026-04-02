@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.auth import hash_password, verify_password
-from app.db import get_user_by_username, search_users
+from app.db import get_user_by_username, search_users, update_user_password
 from app.deps import get_current_user
 from app.errors import error_payload
 
@@ -47,34 +47,25 @@ def change_password(username: str, body: ChangePasswordRequest, request: Request
         )
 
     stored_hash = user.get("password_hash")
-    if stored_hash:
-        if not verify_password(body.current_password, stored_hash):
-            return JSONResponse(
-                status_code=401,
-                content=error_payload("AUTH_ERROR", "Current password is incorrect."),
-            )
-    else:
-        # Legacy user without password
-        if body.current_password != "password":
-            return JSONResponse(
-                status_code=401,
-                content=error_payload("AUTH_ERROR", "Current password is incorrect."),
-            )
+    if not stored_hash:
+        return JSONResponse(
+            status_code=401,
+            content=error_payload("AUTH_ERROR", "Account has no password. Please register again."),
+        )
+    if not verify_password(body.current_password, stored_hash):
+        return JSONResponse(
+            status_code=401,
+            content=error_payload("AUTH_ERROR", "Current password is incorrect."),
+        )
 
-    if len(body.new_password) < 4:
+    if len(body.new_password) < 8:
         return JSONResponse(
             status_code=400,
-            content=error_payload("VALIDATION_ERROR", "New password must be at least 4 characters."),
+            content=error_payload("VALIDATION_ERROR", "New password must be at least 8 characters."),
         )
 
-    import sqlite3
     new_hash = hash_password(body.new_password)
-    with sqlite3.connect(db_path) as conn:
-        conn.execute(
-            "UPDATE users SET password_hash = ? WHERE username = ?",
-            (new_hash, username),
-        )
-        conn.commit()
+    update_user_password(db_path, username, new_hash)
 
     return {"status": "ok", "message": "Password changed successfully."}
 

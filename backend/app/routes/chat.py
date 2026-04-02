@@ -1,8 +1,9 @@
 import json
 from pathlib import Path
+from typing import Literal
 
 import httpx
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
@@ -13,13 +14,14 @@ from app.board_service import (
     save_board_for_user,
     save_named_board_for_user,
 )
+from app.deps import get_current_user
 from app.errors import error_payload
 
 router = APIRouter(prefix="/api")
 
 
 class ChatMessage(BaseModel):
-    role: str
+    role: Literal["user", "assistant"]
     content: str
 
 
@@ -33,8 +35,18 @@ def _db_path(request: Request) -> Path:
 
 
 @router.post("/users/{username}/chat")
-def chat(username: str, chat_request: ChatRequest, request: Request) -> dict:
+def chat(
+    username: str,
+    chat_request: ChatRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+) -> dict:
     """Legacy chat endpoint using the default board."""
+    if current_user["username"] != username:
+        return JSONResponse(
+            status_code=403,
+            content=error_payload("FORBIDDEN", "Access denied."),
+        )
     if not chat_request.message:
         return JSONResponse(
             status_code=400,
@@ -59,8 +71,19 @@ def chat(username: str, chat_request: ChatRequest, request: Request) -> dict:
 
 
 @router.post("/users/{username}/boards/{board_id}/chat")
-def chat_for_board(username: str, board_id: int, chat_request: ChatRequest, request: Request) -> dict:
+def chat_for_board(
+    username: str,
+    board_id: int,
+    chat_request: ChatRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+) -> dict:
     """Chat endpoint scoped to a specific board."""
+    if current_user["username"] != username:
+        return JSONResponse(
+            status_code=403,
+            content=error_payload("FORBIDDEN", "Access denied."),
+        )
     if not chat_request.message:
         return JSONResponse(
             status_code=400,

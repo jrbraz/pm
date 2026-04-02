@@ -3,12 +3,16 @@ import userEvent from "@testing-library/user-event";
 import { ChatSidebar } from "@/components/ChatSidebar";
 
 vi.mock("@/lib/api", () => ({
-  sendChat: vi.fn(),
+  sendChatForBoard: vi.fn(),
 }));
 
-import { sendChat } from "@/lib/api";
+vi.mock("@/components/AuthContext", () => ({
+  useAuth: () => ({ token: "test-token", username: "user" }),
+}));
 
-const mockSendChat = vi.mocked(sendChat);
+import { sendChatForBoard } from "@/lib/api";
+
+const mockSendChat = vi.mocked(sendChatForBoard);
 
 describe("ChatSidebar", () => {
   const onBoardUpdated = vi.fn();
@@ -18,7 +22,7 @@ describe("ChatSidebar", () => {
   });
 
   it("renders empty state with placeholder text", () => {
-    render(<ChatSidebar username="user" onBoardUpdated={onBoardUpdated} />);
+    render(<ChatSidebar username="user" boardId={1} onBoardUpdated={onBoardUpdated} />);
 
     expect(screen.getByText(/ask the ai/i)).toBeInTheDocument();
     expect(screen.getByTestId("chat-input")).toBeInTheDocument();
@@ -29,7 +33,7 @@ describe("ChatSidebar", () => {
     mockSendChat.mockResolvedValue({ reply: "Hello!", board_updated: false });
     const user = userEvent.setup();
 
-    render(<ChatSidebar username="user" onBoardUpdated={onBoardUpdated} />);
+    render(<ChatSidebar username="user" boardId={1} onBoardUpdated={onBoardUpdated} />);
 
     await user.type(screen.getByTestId("chat-input"), "hi there");
     await user.click(screen.getByTestId("chat-send"));
@@ -40,7 +44,7 @@ describe("ChatSidebar", () => {
       expect(screen.getByText("Hello!")).toBeInTheDocument();
     });
 
-    expect(mockSendChat).toHaveBeenCalledWith("user", "hi there", []);
+    expect(mockSendChat).toHaveBeenCalledWith("user", 1, "hi there", [], "test-token");
     expect(onBoardUpdated).not.toHaveBeenCalled();
   });
 
@@ -48,7 +52,7 @@ describe("ChatSidebar", () => {
     mockSendChat.mockResolvedValue({ reply: "Card added.", board_updated: true });
     const user = userEvent.setup();
 
-    render(<ChatSidebar username="user" onBoardUpdated={onBoardUpdated} />);
+    render(<ChatSidebar username="user" boardId={1} onBoardUpdated={onBoardUpdated} />);
 
     await user.type(screen.getByTestId("chat-input"), "add a card");
     await user.click(screen.getByTestId("chat-send"));
@@ -64,7 +68,7 @@ describe("ChatSidebar", () => {
     mockSendChat.mockRejectedValue(new Error("Network error"));
     const user = userEvent.setup();
 
-    render(<ChatSidebar username="user" onBoardUpdated={onBoardUpdated} />);
+    render(<ChatSidebar username="user" boardId={1} onBoardUpdated={onBoardUpdated} />);
 
     await user.type(screen.getByTestId("chat-input"), "hello");
     await user.click(screen.getByTestId("chat-send"));
@@ -81,7 +85,7 @@ describe("ChatSidebar", () => {
     );
     const user = userEvent.setup();
 
-    render(<ChatSidebar username="user" onBoardUpdated={onBoardUpdated} />);
+    render(<ChatSidebar username="user" boardId={1} onBoardUpdated={onBoardUpdated} />);
 
     await user.type(screen.getByTestId("chat-input"), "test");
     await user.click(screen.getByTestId("chat-send"));
@@ -99,7 +103,7 @@ describe("ChatSidebar", () => {
   it("does not send empty messages", async () => {
     const user = userEvent.setup();
 
-    render(<ChatSidebar username="user" onBoardUpdated={onBoardUpdated} />);
+    render(<ChatSidebar username="user" boardId={1} onBoardUpdated={onBoardUpdated} />);
 
     await user.type(screen.getByTestId("chat-input"), "   ");
     await user.click(screen.getByTestId("chat-send"));

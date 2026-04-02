@@ -1,9 +1,12 @@
+import json
+import logging
 from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
+from app.board_models import BoardData
 from app.db import (
     get_boards_accessible_to_user,
     get_activity_for_board,
@@ -13,6 +16,10 @@ from app.db import (
 )
 from app.deps import get_current_user, require_board_access
 from app.errors import error_payload
+
+logger = logging.getLogger(__name__)
+
+MAX_ACTIVITY_LIMIT = 200
 
 router = APIRouter(prefix="/api")
 
@@ -37,7 +44,9 @@ def get_board_activity(
 ) -> dict:
     db_path = _db(request)
     require_board_access(board_id, current_user["user_id"], db_path, minimum_role="viewer")
-    entries = get_activity_for_board(db_path, board_id, limit=limit, offset=offset, card_id=card_id)
+    clamped_limit = max(1, min(limit, MAX_ACTIVITY_LIMIT))
+    clamped_offset = max(0, offset)
+    entries = get_activity_for_board(db_path, board_id, limit=clamped_limit, offset=clamped_offset, card_id=card_id)
     return {"board_id": board_id, "activity": entries}
 
 
@@ -62,9 +71,6 @@ def get_dashboard(
 
     user_id = current_user["user_id"]
     boards = get_boards_accessible_to_user(db_path, user_id)
-
-    import json
-    from app.board_models import BoardData
 
     today = date.today().isoformat()
     board_summaries = []
@@ -92,7 +98,8 @@ def get_dashboard(
                 "overdue": overdue,
                 "updated_at": b["updated_at"],
             })
-        except Exception:
+        except (json.JSONDecodeError, ValueError) as exc:
+            logger.warning("Skipping board %d: %s", b["id"], exc)
             continue
 
     recent_activity = get_recent_activity_for_user(db_path, user_id, limit=20)

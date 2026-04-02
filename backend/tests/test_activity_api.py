@@ -13,8 +13,8 @@ def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _create_board(client: TestClient, username: str, name: str = "Test Board") -> int:
-    r = client.post(f"/api/users/{username}/boards", json={"name": name})
+def _create_board(client: TestClient, username: str, token: str, name: str = "Test Board") -> int:
+    r = client.post(f"/api/users/{username}/boards", json={"name": name}, headers=_auth(token))
     return r.json()["id"]
 
 
@@ -29,7 +29,7 @@ def test_activity_requires_auth(client: TestClient) -> None:
 
 def test_activity_empty_on_new_board(client: TestClient) -> None:
     token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", token)
 
     r = client.get(
         f"/api/users/alice/boards/{board_id}/activity",
@@ -43,7 +43,7 @@ def test_activity_empty_on_new_board(client: TestClient) -> None:
 
 def test_activity_logged_on_board_create(client: TestClient) -> None:
     token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    _create_board(client, "alice", token)
 
     # Create board with token
     client.post(
@@ -69,7 +69,7 @@ def test_activity_logged_on_board_create(client: TestClient) -> None:
 def test_activity_logged_on_member_invite(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     _register_and_login(client, "bob")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -87,7 +87,7 @@ def test_activity_logged_on_member_invite(client: TestClient) -> None:
 
 def test_activity_logged_on_comment(client: TestClient) -> None:
     token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/cards/card-1/comments",
@@ -105,7 +105,7 @@ def test_activity_logged_on_comment(client: TestClient) -> None:
 
 def test_activity_filter_by_card_id(client: TestClient) -> None:
     token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/cards/card-1/comments",
@@ -129,7 +129,7 @@ def test_activity_filter_by_card_id(client: TestClient) -> None:
 
 def test_activity_newest_first(client: TestClient) -> None:
     token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", token)
 
     for i in range(3):
         client.post(
@@ -150,9 +150,9 @@ def test_activity_newest_first(client: TestClient) -> None:
 
 
 def test_activity_non_member_denied(client: TestClient) -> None:
-    _register_and_login(client, "alice")
+    alice_token = _register_and_login(client, "alice")
     dave_token = _register_and_login(client, "dave")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     r = client.get(
         f"/api/users/alice/boards/{board_id}/activity",
@@ -163,7 +163,7 @@ def test_activity_non_member_denied(client: TestClient) -> None:
 
 def test_activity_pagination(client: TestClient) -> None:
     token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", token)
 
     for i in range(5):
         client.post(
@@ -222,8 +222,8 @@ def test_dashboard_new_user(client: TestClient) -> None:
 
 def test_dashboard_shows_owned_boards(client: TestClient) -> None:
     token = _register_and_login(client, "alice")
-    _create_board(client, "alice", "Board A")
-    _create_board(client, "alice", "Board B")
+    _create_board(client, "alice", token, "Board A")
+    _create_board(client, "alice", token, "Board B")
 
     r = client.get("/api/users/alice/dashboard", headers=_auth(token))
     data = r.json()
@@ -236,7 +236,7 @@ def test_dashboard_shows_owned_boards(client: TestClient) -> None:
 def test_dashboard_shows_shared_boards(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     bob_token = _register_and_login(client, "bob")
-    board_id = _create_board(client, "alice", "Alice's Board")
+    board_id = _create_board(client, "alice", alice_token, "Alice's Board")
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -261,7 +261,7 @@ def test_dashboard_total_cards_aggregates_boards(client: TestClient) -> None:
 
 def test_dashboard_recent_activity_present(client: TestClient) -> None:
     token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/cards/card-1/comments",

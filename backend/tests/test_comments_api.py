@@ -13,17 +13,9 @@ def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _create_board(client: TestClient, username: str, name: str = "Test Board") -> int:
-    r = client.post(f"/api/users/{username}/boards", json={"name": name})
+def _create_board(client: TestClient, username: str, token: str, name: str = "Test Board") -> int:
+    r = client.post(f"/api/users/{username}/boards", json={"name": name}, headers=_auth(token))
     return r.json()["id"]
-
-
-def _add_member(client: TestClient, owner_token: str, username: str, board_id: int, role: str = "member") -> None:
-    client.post(
-        f"/api/users/owner/boards/{board_id}/members",
-        json={"username": username, "role": role},
-        headers=_auth(owner_token),
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -37,7 +29,7 @@ def test_list_comments_requires_auth(client: TestClient) -> None:
 
 def test_list_comments_empty(client: TestClient) -> None:
     token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", token)
     r = client.get(
         f"/api/users/alice/boards/{board_id}/cards/card-1/comments",
         headers=_auth(token),
@@ -61,7 +53,7 @@ def test_list_comments_board_not_found(client: TestClient) -> None:
 
 def test_create_comment_success(client: TestClient) -> None:
     token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", token)
 
     r = client.post(
         f"/api/users/alice/boards/{board_id}/cards/card-1/comments",
@@ -77,7 +69,7 @@ def test_create_comment_success(client: TestClient) -> None:
 
 def test_create_comment_appears_in_list(client: TestClient) -> None:
     token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/cards/card-1/comments",
@@ -102,7 +94,7 @@ def test_create_comment_appears_in_list(client: TestClient) -> None:
 
 def test_create_comment_empty_body_rejected(client: TestClient) -> None:
     token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", token)
 
     r = client.post(
         f"/api/users/alice/boards/{board_id}/cards/card-1/comments",
@@ -123,7 +115,7 @@ def test_create_comment_requires_auth(client: TestClient) -> None:
 def test_viewer_cannot_create_comment(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     charlie_token = _register_and_login(client, "charlie")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     # Add charlie as viewer
     client.post(
@@ -143,7 +135,7 @@ def test_viewer_cannot_create_comment(client: TestClient) -> None:
 def test_member_can_create_comment(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     bob_token = _register_and_login(client, "bob")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -166,7 +158,7 @@ def test_member_can_create_comment(client: TestClient) -> None:
 
 def test_update_own_comment(client: TestClient) -> None:
     token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", token)
 
     r = client.post(
         f"/api/users/alice/boards/{board_id}/cards/card-1/comments",
@@ -187,7 +179,7 @@ def test_update_own_comment(client: TestClient) -> None:
 def test_cannot_edit_others_comment(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     bob_token = _register_and_login(client, "bob")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -216,7 +208,7 @@ def test_cannot_edit_others_comment(client: TestClient) -> None:
 
 def test_delete_own_comment(client: TestClient) -> None:
     token = _register_and_login(client, "alice")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", token)
 
     r = client.post(
         f"/api/users/alice/boards/{board_id}/cards/card-1/comments",
@@ -241,7 +233,7 @@ def test_delete_own_comment(client: TestClient) -> None:
 def test_board_owner_can_delete_any_comment(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     bob_token = _register_and_login(client, "bob")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",
@@ -267,7 +259,7 @@ def test_board_owner_can_delete_any_comment(client: TestClient) -> None:
 def test_member_cannot_delete_others_comment(client: TestClient) -> None:
     alice_token = _register_and_login(client, "alice")
     bob_token = _register_and_login(client, "bob")
-    board_id = _create_board(client, "alice")
+    board_id = _create_board(client, "alice", alice_token)
 
     client.post(
         f"/api/users/alice/boards/{board_id}/members",

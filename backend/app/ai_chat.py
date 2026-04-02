@@ -55,6 +55,9 @@ class ChatResult(BaseModel):
     board: BoardData | None = None
 
 
+# Cap conversation history sent to the AI to control token usage and cost.
+# 20 messages (~10 user/assistant pairs) provides enough context for follow-up
+# questions while keeping the request well within typical model context limits.
 MAX_HISTORY_MESSAGES = 20
 
 

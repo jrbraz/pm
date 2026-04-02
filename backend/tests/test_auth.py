@@ -33,7 +33,7 @@ def test_register_user_succeeds(db_path: Path) -> None:
 def test_register_duplicate_username_raises(db_path: Path) -> None:
     register_user(db_path, "alice", "pass1234")
     with pytest.raises(ValueError, match="already taken"):
-        register_user(db_path, "alice", "other")
+        register_user(db_path, "alice", "other1234")
 
 
 def test_register_short_username_raises(db_path: Path) -> None:

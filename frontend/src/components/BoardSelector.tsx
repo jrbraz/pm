@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { createBoard, deleteBoard, duplicateBoard, listBoards, renameBoard } from "@/lib/api";
 import type { BoardSummary } from "@/lib/kanban";
+import { useAuth } from "@/components/AuthContext";
 
 type BoardSelectorProps = {
   username: string;
@@ -15,6 +16,7 @@ export const BoardSelector = ({
   activeBoardId,
   onSelectBoard,
 }: BoardSelectorProps) => {
+  const { token } = useAuth();
   const [boards, setBoards] = useState<BoardSummary[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [newBoardName, setNewBoardName] = useState("");
@@ -26,7 +28,7 @@ export const BoardSelector = ({
   const loadBoards = async () => {
     setIsLoading(true);
     try {
-      const loaded = await listBoards(username);
+      const loaded = await listBoards(username, token || undefined);
       setBoards(loaded);
       if (loaded.length > 0 && activeBoardId === null) {
         const defaultBoard = loaded.find((b) => b.is_default) ?? loaded[0];
@@ -55,7 +57,7 @@ export const BoardSelector = ({
     const name = newBoardName.trim();
     if (!name) return;
     try {
-      const created = await createBoard(username, name);
+      const created = await createBoard(username, name, token || undefined);
       setBoards((prev) => [
         ...prev,
         {
@@ -77,7 +79,7 @@ export const BoardSelector = ({
   const handleDelete = async (boardId: number) => {
     if (boards.length <= 1) return;
     try {
-      await deleteBoard(username, boardId);
+      await deleteBoard(username, boardId, token || undefined);
       const remaining = boards.filter((b) => b.id !== boardId);
       setBoards(remaining);
       if (activeBoardId === boardId && remaining.length > 0) {
@@ -95,7 +97,7 @@ export const BoardSelector = ({
 
   const handleDuplicate = async (board: BoardSummary) => {
     try {
-      const dup = await duplicateBoard(username, board.id, `${board.name} (Copy)`);
+      const dup = await duplicateBoard(username, board.id, `${board.name} (Copy)`, token || undefined);
       setBoards((prev) => [
         ...prev,
         {
@@ -119,7 +121,7 @@ export const BoardSelector = ({
       return;
     }
     try {
-      await renameBoard(username, boardId, name);
+      await renameBoard(username, boardId, name, token || undefined);
       setBoards((prev) =>
         prev.map((b) => (b.id === boardId ? { ...b, name } : b))
       );

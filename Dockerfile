@@ -23,6 +23,11 @@ RUN uv sync --project /app/backend --no-dev
 COPY backend /app/backend
 COPY --from=frontend-builder /app/frontend/out /app/backend/frontend_dist
 
+RUN addgroup --system appgroup && adduser --system --home /home/appuser --ingroup appgroup appuser
+RUN chown -R appuser:appgroup /app
+ENV HOME=/home/appuser
+USER appuser
+
 WORKDIR /app/backend
 
 EXPOSE 8000

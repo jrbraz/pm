@@ -1,4 +1,4 @@
-import { fetchBoard, saveBoard, sendChat } from "@/lib/api";
+import { fetchNamedBoard, saveNamedBoard, sendChatForBoard } from "@/lib/api";
 import type { BoardData } from "@/lib/kanban";
 
 const testBoard: BoardData = {
@@ -21,28 +21,29 @@ describe("board API client", () => {
     vi.restoreAllMocks();
   });
 
-  it("fetchBoard returns board payload", async () => {
+  it("fetchNamedBoard returns board payload", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      jsonResponse({ username: "user", board: testBoard })
+      jsonResponse({ id: 1, name: "My Board", username: "user", board: testBoard, is_default: true })
     );
 
-    const board = await fetchBoard("user");
+    const payload = await fetchNamedBoard("user", 1);
 
-    expect(board).toEqual(testBoard);
-    expect(globalThis.fetch).toHaveBeenCalledWith("/api/users/user/board", {
+    expect(payload.board).toEqual(testBoard);
+    expect(globalThis.fetch).toHaveBeenCalledWith("/api/users/user/boards/1", {
       cache: "no-store",
+      headers: {},
     });
   });
 
-  it("saveBoard sends put request and returns saved board", async () => {
+  it("saveNamedBoard sends put request and returns saved board", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      jsonResponse({ username: "user", board: testBoard })
+      jsonResponse({ id: 1, name: "My Board", username: "user", board: testBoard, is_default: true })
     );
 
-    const board = await saveBoard("user", testBoard);
+    const payload = await saveNamedBoard("user", 1, testBoard);
 
-    expect(board).toEqual(testBoard);
-    expect(globalThis.fetch).toHaveBeenCalledWith("/api/users/user/board", {
+    expect(payload.board).toEqual(testBoard);
+    expect(globalThis.fetch).toHaveBeenCalledWith("/api/users/user/boards/1", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(testBoard),
@@ -62,7 +63,7 @@ describe("board API client", () => {
       )
     );
 
-    await expect(fetchBoard("user")).rejects.toThrow(
+    await expect(fetchNamedBoard("user", 1)).rejects.toThrow(
       "Request validation failed."
     );
   });
@@ -73,23 +74,23 @@ describe("chat API client", () => {
     vi.restoreAllMocks();
   });
 
-  it("sendChat posts message and returns response", async () => {
+  it("sendChatForBoard posts message and returns response", async () => {
     const chatResponse = { reply: "Hello!", board_updated: false };
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       jsonResponse(chatResponse)
     );
 
-    const result = await sendChat("user", "hi", []);
+    const result = await sendChatForBoard("user", 1, "hi", []);
 
     expect(result).toEqual(chatResponse);
-    expect(globalThis.fetch).toHaveBeenCalledWith("/api/users/user/chat", {
+    expect(globalThis.fetch).toHaveBeenCalledWith("/api/users/user/boards/1/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: "hi", history: [] }),
     });
   });
 
-  it("sendChat includes history in request", async () => {
+  it("sendChatForBoard includes history in request", async () => {
     const history = [
       { role: "user" as const, content: "hi" },
       { role: "assistant" as const, content: "hello" },
@@ -98,7 +99,7 @@ describe("chat API client", () => {
       jsonResponse({ reply: "ok", board_updated: false })
     );
 
-    await sendChat("user", "next", history);
+    await sendChatForBoard("user", 1, "next", history);
 
     const body = JSON.parse(
       (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body
@@ -106,11 +107,11 @@ describe("chat API client", () => {
     expect(body.history).toEqual(history);
   });
 
-  it("sendChat throws on error response", async () => {
+  it("sendChatForBoard throws on error response", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       jsonResponse({ error: { code: "AI_ERROR", message: "API down" } }, 502)
     );
 
-    await expect(sendChat("user", "hi", [])).rejects.toThrow("API down");
+    await expect(sendChatForBoard("user", 1, "hi", [])).rejects.toThrow("API down");
   });
 });
