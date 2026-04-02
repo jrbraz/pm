@@ -61,6 +61,7 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
           </svg>
         </button>
         <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-medium text-[var(--gray-text)] opacity-60">{card.id}</p>
           <h4 className="font-display text-sm font-semibold leading-snug text-[var(--navy-dark)]">
             {card.title}
           </h4>

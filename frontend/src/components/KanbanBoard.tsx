@@ -18,7 +18,7 @@ import { BoardSettingsPanel } from "@/components/BoardSettingsPanel";
 import { BoardStatsBar } from "@/components/BoardStatsBar";
 import { BoardFilterBar } from "@/components/BoardFilterBar";
 import { PlusIcon, GearIcon } from "@/components/Icons";
-import { fetchBoardMembers, fetchNamedBoard, saveNamedBoard } from "@/lib/api";
+import { fetchBoardMembers, fetchNamedBoard, reserveNextCardId, saveNamedBoard } from "@/lib/api";
 import { useDebouncedCallback } from "@/lib/useDebounce";
 import { createId, moveCard, type BoardData, type Card, type BoardMember, type Priority } from "@/lib/kanban";
 import { useAuth } from "@/components/AuthContext";
@@ -231,7 +231,7 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
     });
   };
 
-  const handleAddCard = (
+  const handleAddCard = async (
     columnId: string,
     title: string,
     details: string,
@@ -239,28 +239,33 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
     labels?: string[],
     dueDate?: string | null
   ) => {
-    const id = createId("card");
-    applyBoardUpdate((currentBoard) => ({
-      ...currentBoard,
-      cards: {
-        ...currentBoard.cards,
-        [id]: {
-          id,
-          title,
-          details: details || "No details yet.",
-          priority: priority ?? null,
-          labels: labels ?? [],
-          due_date: dueDate ?? null,
-          checklist: [],
-          assignee_ids: [],
+    if (!token) return;
+    try {
+      const id = await reserveNextCardId(username, token);
+      applyBoardUpdate((currentBoard) => ({
+        ...currentBoard,
+        cards: {
+          ...currentBoard.cards,
+          [id]: {
+            id,
+            title,
+            details: details || "No details yet.",
+            priority: priority ?? null,
+            labels: labels ?? [],
+            due_date: dueDate ?? null,
+            checklist: [],
+            assignee_ids: [],
+          },
         },
-      },
-      columns: currentBoard.columns.map((column) =>
-        column.id === columnId
-          ? { ...column, cardIds: [...column.cardIds, id] }
-          : column
-      ),
-    }));
+        columns: currentBoard.columns.map((column) =>
+          column.id === columnId
+            ? { ...column, cardIds: [...column.cardIds, id] }
+            : column
+        ),
+      }));
+    } catch {
+      setErrorMessage("Failed to create card.");
+    }
   };
 
   const handleDeleteCard = (columnId: string, cardId: string) => {

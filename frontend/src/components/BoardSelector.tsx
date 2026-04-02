@@ -23,6 +23,7 @@ export const BoardSelector = ({
   const [isLoading, setIsLoading] = useState(true);
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   const loadBoards = async () => {
@@ -52,10 +53,18 @@ export const BoardSelector = ({
     }
   }, [renamingId]);
 
+  // Auto-clear error after 4 seconds
+  useEffect(() => {
+    if (!errorMessage) return;
+    const timer = setTimeout(() => setErrorMessage(null), 4000);
+    return () => clearTimeout(timer);
+  }, [errorMessage]);
+
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
     const name = newBoardName.trim();
     if (!name) return;
+    setErrorMessage(null);
     try {
       const created = await createBoard(username, name, token || undefined);
       setBoards((prev) => [
@@ -71,13 +80,14 @@ export const BoardSelector = ({
       setNewBoardName("");
       setIsCreating(false);
       onSelectBoard(created.id);
-    } catch {
-      // ignore
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to create board.");
     }
   };
 
   const handleDelete = async (boardId: number) => {
     if (boards.length <= 1) return;
+    setErrorMessage(null);
     try {
       await deleteBoard(username, boardId, token || undefined);
       const remaining = boards.filter((b) => b.id !== boardId);
@@ -85,17 +95,19 @@ export const BoardSelector = ({
       if (activeBoardId === boardId && remaining.length > 0) {
         onSelectBoard(remaining[0].id);
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to delete board.");
     }
   };
 
   const startRename = (board: BoardSummary) => {
     setRenamingId(board.id);
     setRenameValue(board.name);
+    setErrorMessage(null);
   };
 
   const handleDuplicate = async (board: BoardSummary) => {
+    setErrorMessage(null);
     try {
       const dup = await duplicateBoard(username, board.id, `${board.name} (Copy)`, token || undefined);
       setBoards((prev) => [
@@ -109,8 +121,8 @@ export const BoardSelector = ({
         },
       ]);
       onSelectBoard(dup.id);
-    } catch {
-      // ignore
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to duplicate board.");
     }
   };
 
@@ -120,13 +132,14 @@ export const BoardSelector = ({
       setRenamingId(null);
       return;
     }
+    setErrorMessage(null);
     try {
       await renameBoard(username, boardId, name, token || undefined);
       setBoards((prev) =>
         prev.map((b) => (b.id === boardId ? { ...b, name } : b))
       );
-    } catch {
-      // ignore
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to rename board.");
     }
     setRenamingId(null);
   };
@@ -141,6 +154,12 @@ export const BoardSelector = ({
 
   return (
     <div className="flex flex-col gap-1">
+      {errorMessage && (
+        <div className="mx-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1.5">
+          <p className="text-[10px] font-medium text-red-600">{errorMessage}</p>
+        </div>
+      )}
+
       {boards.map((board) => (
         <div
           key={board.id}
@@ -211,30 +230,33 @@ export const BoardSelector = ({
       ))}
 
       {isCreating ? (
-        <form onSubmit={(e) => void handleCreate(e)} className="flex items-center gap-1 px-2 py-1">
-          <input
-            autoFocus
-            value={newBoardName}
-            onChange={(e) => setNewBoardName(e.target.value)}
-            placeholder="Board name..."
-            className="min-w-0 flex-1 rounded border border-[var(--stroke)] px-2 py-1 text-xs text-[var(--navy-dark)] outline-none focus:border-[var(--primary-blue)]"
-          />
-          <button
-            type="submit"
-            className="rounded bg-[var(--primary-blue)] px-2 py-1 text-xs font-semibold text-white"
-          >
-            Add
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsCreating(false);
-              setNewBoardName("");
-            }}
-            className="text-xs text-[var(--gray-text)] hover:text-[var(--navy-dark)]"
-          >
-            Cancel
-          </button>
+        <form onSubmit={(e) => void handleCreate(e)} className="flex flex-col gap-1 px-2 py-1">
+          <div className="flex items-center gap-1">
+            <input
+              autoFocus
+              value={newBoardName}
+              onChange={(e) => setNewBoardName(e.target.value)}
+              placeholder="Board name..."
+              className="min-w-0 flex-1 rounded border border-[var(--stroke)] px-2 py-1 text-xs text-[var(--navy-dark)] outline-none focus:border-[var(--primary-blue)]"
+            />
+            <button
+              type="submit"
+              className="rounded bg-[var(--primary-blue)] px-2 py-1 text-xs font-semibold text-white"
+            >
+              Add
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCreating(false);
+                setNewBoardName("");
+                setErrorMessage(null);
+              }}
+              className="text-xs text-[var(--gray-text)] hover:text-[var(--navy-dark)]"
+            >
+              Cancel
+            </button>
+          </div>
         </form>
       ) : (
         <button

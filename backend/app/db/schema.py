@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_DB_PATH = (Path(__file__).resolve().parents[2] / "data" / "pm.db").resolve()
 
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 
 NEW_SCHEMA_SQL = """
 PRAGMA foreign_keys = ON;
@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT,
+    card_seq INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -153,6 +154,11 @@ def _migrate_database(conn: sqlite3.Connection) -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_card_comments_card ON card_comments(board_id, card_id);
     """)
+
+    # Add card_seq column if missing (v3 migration)
+    user_cols = [row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()]
+    if "card_seq" not in user_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN card_seq INTEGER NOT NULL DEFAULT 0")
 
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS activity_log (

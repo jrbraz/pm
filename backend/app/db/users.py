@@ -70,6 +70,41 @@ def update_user_password(db_path: Path, username: str, password_hash: str) -> No
         connection.commit()
 
 
+def reserve_next_card_id(db_path: Path, user_id: int) -> str:
+    """Atomically increment the user's card_seq and return the next card ID (e.g. 'CARD-9')."""
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "UPDATE users SET card_seq = card_seq + 1 WHERE id = ?",
+            (user_id,),
+        )
+        row = connection.execute(
+            "SELECT card_seq FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+        connection.commit()
+        return f"CARD-{row[0]}"
+
+
+def set_card_seq(db_path: Path, user_id: int, seq: int) -> None:
+    """Set the card_seq for a user (used when seeding default boards)."""
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "UPDATE users SET card_seq = ? WHERE id = ?",
+            (seq, user_id),
+        )
+        connection.commit()
+
+
+def get_card_seq(db_path: Path, user_id: int) -> int:
+    """Return the current card_seq for a user."""
+    with sqlite3.connect(db_path) as connection:
+        row = connection.execute(
+            "SELECT card_seq FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+        return row[0] if row else 0
+
+
 def search_users(db_path: Path, query: str, limit: int = 10) -> list[dict]:
     """Search users by username prefix. Returns list of {id, username}."""
     with sqlite3.connect(db_path) as connection:

@@ -226,6 +226,21 @@ export const saveNamedBoard = async (
   return (await response.json()) as NamedBoardPayload;
 };
 
+export const reserveNextCardId = async (
+  username: string,
+  token: string
+): Promise<string> => {
+  const response = await fetch(
+    `/api/users/${encodeURIComponent(username)}/next-card-id`,
+    { method: "POST", headers: authHeader(token) }
+  );
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+  const data = (await response.json()) as { card_id: string };
+  return data.card_id;
+};
+
 export const fetchBoardStats = async (
   username: string,
   boardId: number,

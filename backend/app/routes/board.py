@@ -19,7 +19,7 @@ from app.board_service import (
     save_board_for_user,
     save_named_board_with_access,
 )
-from app.db import log_activity, get_or_create_user_id
+from app.db import log_activity, get_or_create_user_id, reserve_next_card_id
 from app.deps import get_current_user, require_board_access
 from app.errors import error_payload
 
@@ -125,7 +125,13 @@ def create_board(
             content=error_payload("VALIDATION_ERROR", "Board name is required."),
         )
     db_path = _db_path(request)
-    result = create_board_for_user(db_path, username, body.name.strip())
+    try:
+        result = create_board_for_user(db_path, username, body.name.strip())
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=409,
+            content=error_payload("CONFLICT", str(exc)),
+        )
 
     log_activity(
         db_path,
@@ -230,7 +236,13 @@ def patch_named_board(
             content=error_payload("VALIDATION_ERROR", "Board name is required."),
         )
     db_path = _db_path(request)
-    found = rename_board_for_user(db_path, username, board_id, body.name.strip())
+    try:
+        found = rename_board_for_user(db_path, username, board_id, body.name.strip())
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=409,
+            content=error_payload("CONFLICT", str(exc)),
+        )
     if not found:
         return JSONResponse(
             status_code=404,
@@ -289,7 +301,13 @@ def duplicate_board(
             content=error_payload("VALIDATION_ERROR", "Board name is required."),
         )
     db_path = _db_path(request)
-    result = duplicate_board_for_user(db_path, username, board_id, name)
+    try:
+        result = duplicate_board_for_user(db_path, username, board_id, name)
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=409,
+            content=error_payload("CONFLICT", str(exc)),
+        )
     if result is None:
         return JSONResponse(
             status_code=404,
@@ -349,3 +367,18 @@ def get_board_stats(
         ),
     }
     return stats
+
+
+@router.post("/users/{username}/next-card-id")
+def next_card_id(
+    username: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    """Reserve and return the next sequential card ID for this user."""
+    err = _check_username(current_user, username)
+    if err:
+        return err
+    db_path = _db_path(request)
+    card_id = reserve_next_card_id(db_path, current_user["user_id"])
+    return {"card_id": card_id}

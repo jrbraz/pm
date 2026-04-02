@@ -9,8 +9,8 @@ def test_get_board_for_user_returns_default_board(auth_client) -> None:
     body = response.json()
     assert body["username"] == username
     assert len(body["board"]["columns"]) == 5
-    assert "card-1" in body["board"]["cards"]
-    assert body["board"]["cards"]["card-1"]["title"] == "Align roadmap themes"
+    assert "CARD-1" in body["board"]["cards"]
+    assert body["board"]["cards"]["CARD-1"]["title"] == "Align roadmap themes"
 
 
 def test_put_board_for_user_persists_and_returns_board(auth_client) -> None:

@@ -12,8 +12,8 @@ def test_get_or_create_board_for_user_seeds_default_board(tmp_path: Path) -> Non
     board = get_or_create_board_for_user(db_path, "user")
 
     assert len(board.columns) == 5
-    assert "card-1" in board.cards
-    assert board.cards["card-1"].title == "Align roadmap themes"
+    assert "CARD-1" in board.cards
+    assert board.cards["CARD-1"].title == "Align roadmap themes"
 
     board_again = get_or_create_board_for_user(db_path, "user")
     assert board_again.model_dump() == board.model_dump()

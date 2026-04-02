@@ -12,10 +12,13 @@ Sub-modules:
 from app.db.schema import DEFAULT_DB_PATH, initialize_database  # noqa: F401
 from app.db.users import (  # noqa: F401
     create_user,
+    get_card_seq,
     get_or_create_user_id,
     get_user_by_id,
     get_user_by_username,
+    reserve_next_card_id,
     search_users,
+    set_card_seq,
     update_user_password,
 )
 from app.db.sessions import (  # noqa: F401

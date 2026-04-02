@@ -18,8 +18,9 @@ def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _create_board(client: TestClient, username: str, token: str) -> int:
-    r = client.post(f"/api/users/{username}/boards", json={"name": "Test"}, headers=_auth(token))
+def _create_board(client: TestClient, username: str, token: str, name: str = "Test") -> int:
+    r = client.post(f"/api/users/{username}/boards", json={"name": name}, headers=_auth(token))
+    assert r.status_code == 201, r.text
     return r.json()["id"]
 
 
@@ -155,20 +156,19 @@ class TestAiTestAuth:
 class TestBoardListPagination:
     def test_list_boards_with_limit(self, client: TestClient) -> None:
         token = _register_and_login(client, "alice")
-        _create_board(client, "alice", token)
-        _create_board(client, "alice", token)
-        _create_board(client, "alice", token)
+        _create_board(client, "alice", token, "Board A")
+        _create_board(client, "alice", token, "Board B")
+        _create_board(client, "alice", token, "Board C")
 
         r = client.get("/api/users/alice/boards?limit=2", headers=_auth(token))
         assert r.status_code == 200
-        # Should include the auto-created default + up to limit
         boards = r.json()["boards"]
         assert len(boards) <= 2
 
     def test_list_boards_with_offset(self, client: TestClient) -> None:
         token = _register_and_login(client, "alice")
-        _create_board(client, "alice", token)
-        _create_board(client, "alice", token)
+        _create_board(client, "alice", token, "Board X")
+        _create_board(client, "alice", token, "Board Y")
 
         r_all = client.get("/api/users/alice/boards?limit=100", headers=_auth(token))
         total = len(r_all.json()["boards"])

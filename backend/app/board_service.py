@@ -12,6 +12,7 @@ from app.db import (
     get_default_board,
     get_or_create_user_id,
     rename_board,
+    set_card_seq,
     update_board_json,
     update_board_json_by_id,
     upsert_board_json,
@@ -19,64 +20,64 @@ from app.db import (
 
 DEFAULT_BOARD = BoardData(
     columns=[
-        {"id": "col-backlog", "title": "Backlog", "cardIds": ["card-1", "card-2"]},
-        {"id": "col-discovery", "title": "Discovery", "cardIds": ["card-3"]},
-        {"id": "col-progress", "title": "In Progress", "cardIds": ["card-4", "card-5"]},
-        {"id": "col-review", "title": "Review", "cardIds": ["card-6"]},
-        {"id": "col-done", "title": "Done", "cardIds": ["card-7", "card-8"]},
+        {"id": "col-backlog", "title": "Backlog", "cardIds": ["CARD-1", "CARD-2"]},
+        {"id": "col-discovery", "title": "Discovery", "cardIds": ["CARD-3"]},
+        {"id": "col-progress", "title": "In Progress", "cardIds": ["CARD-4", "CARD-5"]},
+        {"id": "col-review", "title": "Review", "cardIds": ["CARD-6"]},
+        {"id": "col-done", "title": "Done", "cardIds": ["CARD-7", "CARD-8"]},
     ],
     cards={
-        "card-1": {
-            "id": "card-1",
+        "CARD-1": {
+            "id": "CARD-1",
             "title": "Align roadmap themes",
             "details": "Draft quarterly themes with impact statements and metrics.",
             "priority": "high",
             "labels": ["strategy"],
         },
-        "card-2": {
-            "id": "card-2",
+        "CARD-2": {
+            "id": "CARD-2",
             "title": "Gather customer signals",
             "details": "Review support tags, sales notes, and churn feedback.",
             "priority": "medium",
             "labels": ["research"],
         },
-        "card-3": {
-            "id": "card-3",
+        "CARD-3": {
+            "id": "CARD-3",
             "title": "Prototype analytics view",
             "details": "Sketch initial dashboard layout and key drill-downs.",
             "priority": "medium",
             "labels": ["design"],
         },
-        "card-4": {
-            "id": "card-4",
+        "CARD-4": {
+            "id": "CARD-4",
             "title": "Refine status language",
             "details": "Standardize column labels and tone across the board.",
             "priority": "low",
             "labels": [],
         },
-        "card-5": {
-            "id": "card-5",
+        "CARD-5": {
+            "id": "CARD-5",
             "title": "Design card layout",
             "details": "Add hierarchy and spacing for scanning dense lists.",
             "priority": "medium",
             "labels": ["design"],
         },
-        "card-6": {
-            "id": "card-6",
+        "CARD-6": {
+            "id": "CARD-6",
             "title": "QA micro-interactions",
             "details": "Verify hover, focus, and loading states.",
             "priority": "high",
             "labels": ["qa"],
         },
-        "card-7": {
-            "id": "card-7",
+        "CARD-7": {
+            "id": "CARD-7",
             "title": "Ship marketing page",
             "details": "Final copy approved and asset pack delivered.",
             "priority": None,
             "labels": ["marketing"],
         },
-        "card-8": {
-            "id": "card-8",
+        "CARD-8": {
+            "id": "CARD-8",
             "title": "Close onboarding sprint",
             "details": "Document release notes and share internally.",
             "priority": None,
@@ -94,6 +95,7 @@ def get_or_create_board_for_user(db_path: Path, username: str) -> BoardData:
     if raw_board is None:
         board = DEFAULT_BOARD
         upsert_board_json(db_path, user_id, board.model_dump_json())
+        set_card_seq(db_path, user_id, 8)  # DEFAULT_BOARD has CARD-1..CARD-8
         return board
 
     parsed_board = json.loads(raw_board)
@@ -119,6 +121,7 @@ def list_boards_for_user(db_path: Path, username: str) -> list[dict]:
         create_board(
             db_path, user_id, "My Board", DEFAULT_BOARD.model_dump_json(), is_default=True
         )
+        set_card_seq(db_path, user_id, 8)  # DEFAULT_BOARD has CARD-1..CARD-8
         boards = get_boards_for_user(db_path, user_id)
     return boards
 
@@ -200,14 +203,21 @@ EMPTY_BOARD = BoardData(
 
 
 def create_board_for_user(db_path: Path, username: str, name: str) -> dict:
-    """Create a new board for a user. Returns board summary dict."""
+    """Create a new board for a user. Returns board summary dict.
+
+    Raises ValueError if a board with the same name already exists for this user.
+    """
     user_id = get_or_create_user_id(db_path, username)
     existing = get_boards_for_user(db_path, user_id)
+    if any(b["name"].lower() == name.lower() for b in existing):
+        raise ValueError(f"A board named '{name}' already exists.")
     is_first = len(existing) == 0
     board_data = DEFAULT_BOARD if is_first else EMPTY_BOARD
     board_id = create_board(
         db_path, user_id, name, board_data.model_dump_json(), is_default=is_first
     )
+    if is_first:
+        set_card_seq(db_path, user_id, 8)  # DEFAULT_BOARD has CARD-1..CARD-8
     return {
         "id": board_id,
         "name": name,
@@ -219,11 +229,17 @@ def create_board_for_user(db_path: Path, username: str, name: str) -> dict:
 def rename_board_for_user(
     db_path: Path, username: str, board_id: int, name: str
 ) -> bool:
-    """Rename a board. Returns True if found and renamed."""
+    """Rename a board. Returns True if found and renamed.
+
+    Raises ValueError if another board with the same name already exists.
+    """
     user_id = get_or_create_user_id(db_path, username)
     existing = get_board_by_id(db_path, board_id, user_id)
     if existing is None:
         return False
+    all_boards = get_boards_for_user(db_path, user_id)
+    if any(b["name"].lower() == name.lower() and b["id"] != board_id for b in all_boards):
+        raise ValueError(f"A board named '{name}' already exists.")
     rename_board(db_path, board_id, user_id, name)
     return True
 
@@ -235,8 +251,14 @@ def delete_board_for_user(db_path: Path, username: str, board_id: int) -> bool:
 
 
 def duplicate_board_for_user(db_path: Path, username: str, board_id: int, new_name: str) -> dict | None:
-    """Duplicate a board under a new name. Returns new board summary or None if not found."""
+    """Duplicate a board under a new name. Returns new board summary or None if not found.
+
+    Raises ValueError if a board with the same name already exists.
+    """
     user_id = get_or_create_user_id(db_path, username)
+    all_boards = get_boards_for_user(db_path, user_id)
+    if any(b["name"].lower() == new_name.lower() for b in all_boards):
+        raise ValueError(f"A board named '{new_name}' already exists.")
     source = get_board_by_id(db_path, board_id, user_id)
     if source is None:
         return None
