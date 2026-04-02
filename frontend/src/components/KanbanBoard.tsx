@@ -620,11 +620,13 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
       {editingCard && (
         <CardDetailPanel
           card={editingCard}
+          allCards={board.cards}
           columnTitle={editingCardColumnTitle}
           username={username}
           boardId={boardId}
           boardMembers={allMemberUsernames}
           onSave={handleSaveCard}
+          onOpenCard={(c) => setEditingCard(c)}
           onClose={() => setEditingCard(null)}
         />
       )}

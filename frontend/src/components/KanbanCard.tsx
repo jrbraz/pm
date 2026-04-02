@@ -82,50 +82,50 @@ export const KanbanCard = ({
       />
 
       <div className="px-3 pb-3 pt-2">
-        {/* Header: type + ID + actions */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {/* Drag handle */}
-            <button
-              type="button"
-              className={clsx(
-                "shrink-0 touch-none text-[var(--gray-text)] transition",
-                dragDisabled
-                  ? "cursor-not-allowed opacity-20"
-                  : "cursor-grab opacity-0 group-hover:opacity-40 active:cursor-grabbing"
-              )}
-              aria-label="Drag card"
-              onClick={(e) => e.stopPropagation()}
-              disabled={dragDisabled}
-              {...attributes}
-              {...listeners}
-            >
-              <svg width="8" height="12" viewBox="0 0 10 14" fill="currentColor" aria-hidden="true">
-                <circle cx="2.5" cy="2" r="1.5" />
-                <circle cx="7.5" cy="2" r="1.5" />
-                <circle cx="2.5" cy="7" r="1.5" />
-                <circle cx="7.5" cy="7" r="1.5" />
-                <circle cx="2.5" cy="12" r="1.5" />
-                <circle cx="7.5" cy="12" r="1.5" />
-              </svg>
-            </button>
-
-            {/* Type badge */}
-            {card.card_type && (
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-                style={{
-                  backgroundColor: typeColor + "15",
-                  color: typeColor,
-                }}
+        {/* Header: drag handle + actions */}
+        <div className="flex items-start justify-between">
+          <div className="min-w-0 flex-1 space-y-1">
+            {/* Row 1: Card type */}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                className={clsx(
+                  "shrink-0 touch-none text-[var(--gray-text)] transition",
+                  dragDisabled
+                    ? "cursor-not-allowed opacity-20"
+                    : "cursor-grab opacity-0 group-hover:opacity-40 active:cursor-grabbing"
+                )}
+                aria-label="Drag card"
+                onClick={(e) => e.stopPropagation()}
+                disabled={dragDisabled}
+                {...attributes}
+                {...listeners}
               >
-                <CardTypeIcon type={card.card_type} size={10} />
-                {CARD_TYPE_LABELS[card.card_type]}
-              </span>
-            )}
+                <svg width="8" height="12" viewBox="0 0 10 14" fill="currentColor" aria-hidden="true">
+                  <circle cx="2.5" cy="2" r="1.5" />
+                  <circle cx="7.5" cy="2" r="1.5" />
+                  <circle cx="2.5" cy="7" r="1.5" />
+                  <circle cx="7.5" cy="7" r="1.5" />
+                  <circle cx="2.5" cy="12" r="1.5" />
+                  <circle cx="7.5" cy="12" r="1.5" />
+                </svg>
+              </button>
+              {card.card_type && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                  style={{
+                    backgroundColor: typeColor + "15",
+                    color: typeColor,
+                  }}
+                >
+                  <CardTypeIcon type={card.card_type} size={10} />
+                  {CARD_TYPE_LABELS[card.card_type]}
+                </span>
+              )}
+            </div>
 
-            {/* Card ID */}
-            <span className="text-[10px] font-mono font-medium text-[var(--gray-text)]">{card.id}</span>
+            {/* Row 2: Card ID */}
+            <p className="font-mono text-[10px] font-medium text-[var(--gray-text)]">{card.id}</p>
           </div>
 
           {/* Action buttons */}
@@ -156,16 +156,16 @@ export const KanbanCard = ({
           </div>
         </div>
 
-        {/* Meta row: created by + parent */}
+        {/* Meta: created by + parent (each on its own line, separated) */}
         {(card.created_by || parentCard) && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-dashed border-[var(--stroke)] pb-1.5">
+          <div className="mt-1.5 space-y-1 border-b border-dashed border-[var(--stroke)] pb-2">
             {card.created_by && (
-              <span className="flex items-center gap-1 text-[10px] text-[var(--gray-text)]">
+              <p className="flex items-center gap-1 text-[10px] text-[var(--gray-text)]">
                 <svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor" className="opacity-50">
                   <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z" />
                 </svg>
                 {card.created_by}
-              </span>
+              </p>
             )}
             {parentCard && (
               <button
@@ -175,7 +175,7 @@ export const KanbanCard = ({
                 title={`Open parent: ${parentCard.title}`}
               >
                 <CardTypeIcon type={parentCard.card_type ?? "initiative"} size={9} />
-                <span className="max-w-[120px] truncate">{parentCard.id}</span>
+                <span className="max-w-[140px] truncate">{parentCard.id}: {parentCard.title}</span>
               </button>
             )}
           </div>

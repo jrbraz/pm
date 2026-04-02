@@ -13,11 +13,13 @@ type Tab = "details" | "checklist" | "comments" | "activity";
 
 type CardDetailPanelProps = {
   card: Card;
+  allCards?: Record<string, Card>;
   columnTitle: string;
   username: string;
   boardId: number;
   boardMembers?: string[];
   onSave: (updated: Card) => void;
+  onOpenCard?: (card: Card) => void;
   onClose: () => void;
 };
 
@@ -25,11 +27,13 @@ const PRIORITIES: Priority[] = ["critical", "high", "medium", "low"];
 
 export const CardDetailPanel = ({
   card,
+  allCards = {},
   columnTitle,
   username,
   boardId,
   boardMembers = [],
   onSave,
+  onOpenCard,
   onClose,
 }: CardDetailPanelProps) => {
   const { token } = useAuth();
@@ -179,6 +183,52 @@ export const CardDetailPanel = ({
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {activeTab === "details" && (
             <div className="space-y-5">
+              {/* Parent card */}
+              {card.parent_id && allCards[card.parent_id] && (
+                <div>
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)]">
+                    Parent
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onOpenCard?.(allCards[card.parent_id!])}
+                    className="flex items-center gap-1.5 rounded-lg border border-[var(--stroke)] px-2.5 py-1.5 text-xs text-[var(--navy-dark)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+                  >
+                    <CardTypeIcon type={allCards[card.parent_id].card_type ?? "initiative"} size={12} />
+                    <span className="font-mono text-[10px] text-[var(--gray-text)]">{card.parent_id}</span>
+                    <span className="truncate">{allCards[card.parent_id].title}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Children */}
+              {(() => {
+                const children = Object.values(allCards).filter((c) => c.parent_id === card.id);
+                if (children.length === 0) return null;
+                return (
+                  <div>
+                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)]">
+                      Children ({children.length})
+                    </p>
+                    <ul className="space-y-1">
+                      {children.map((child) => (
+                        <li key={child.id}>
+                          <button
+                            type="button"
+                            onClick={() => onOpenCard?.(child)}
+                            className="flex w-full items-center gap-2 rounded-lg border border-[var(--stroke)] px-2.5 py-1.5 text-left text-xs text-[var(--navy-dark)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+                          >
+                            <CardTypeIcon type={child.card_type ?? "initiative"} size={12} />
+                            <span className="font-mono text-[10px] text-[var(--gray-text)]">{child.id}</span>
+                            <span className="min-w-0 flex-1 truncate">{child.title || "Untitled"}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })()}
+
               {/* Priority */}
               <div>
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--gray-text)]">
