@@ -19,6 +19,7 @@ from app.board_service import (
     save_board_for_user,
     save_named_board_with_access,
 )
+from app.board_models import CARD_TYPE_PREFIXES
 from app.db import log_activity, get_or_create_user_id, reserve_next_card_id
 from app.deps import get_current_user, require_board_access
 from app.errors import error_payload
@@ -369,16 +370,23 @@ def get_board_stats(
     return stats
 
 
+class NextCardIdRequest(BaseModel):
+    card_type: str = "initiative"
+
+
 @router.post("/users/{username}/next-card-id")
 def next_card_id(
     username: str,
     request: Request,
     current_user: dict = Depends(get_current_user),
+    body: NextCardIdRequest | None = None,
 ) -> dict:
     """Reserve and return the next sequential card ID for this user."""
     err = _check_username(current_user, username)
     if err:
         return err
+    card_type = body.card_type if body else "initiative"
+    prefix = CARD_TYPE_PREFIXES.get(card_type, "INIT")
     db_path = _db_path(request)
-    card_id = reserve_next_card_id(db_path, current_user["user_id"])
+    card_id = reserve_next_card_id(db_path, current_user["user_id"], prefix=prefix)
     return {"card_id": card_id}

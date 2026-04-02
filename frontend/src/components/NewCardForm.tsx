@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from "react";
-import type { Priority } from "@/lib/kanban";
+import type { CardType, Priority } from "@/lib/kanban";
+import { CARD_TYPE_COLORS, CARD_TYPE_LABELS } from "@/lib/kanban";
+import { CardTypeIcon } from "@/components/Icons";
 
 const PRIORITIES: { value: Priority; label: string; color: string }[] = [
   { value: "low", label: "Low", color: "#888888" },
@@ -8,27 +10,34 @@ const PRIORITIES: { value: Priority; label: string; color: string }[] = [
   { value: "critical", label: "Critical", color: "#e53e3e" },
 ];
 
+const CARD_TYPES: CardType[] = ["initiative", "epic", "task", "story", "change_scope", "sub_task"];
+
 const initialFormState = {
   title: "",
   details: "",
+  card_type: "initiative" as CardType,
   priority: null as Priority | null,
   labels: "",
   due_date: "",
 };
 
 type NewCardFormProps = {
+  defaultType?: CardType;
+  allowedTypes?: CardType[];
   onAdd: (
     title: string,
     details: string,
+    cardType: CardType,
     priority?: Priority | null,
     labels?: string[],
     dueDate?: string | null
   ) => void;
 };
 
-export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
+export const NewCardForm = ({ defaultType = "initiative", allowedTypes, onAdd }: NewCardFormProps) => {
+  const visibleTypes = allowedTypes ?? CARD_TYPES;
   const [isOpen, setIsOpen] = useState(false);
-  const [formState, setFormState] = useState(initialFormState);
+  const [formState, setFormState] = useState({ ...initialFormState, card_type: defaultType });
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -40,11 +49,12 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
     onAdd(
       formState.title.trim(),
       formState.details.trim(),
+      formState.card_type,
       formState.priority,
       labels,
       formState.due_date || null
     );
-    setFormState(initialFormState);
+    setFormState({ ...initialFormState, card_type: defaultType });
     setIsOpen(false);
   };
 
@@ -52,6 +62,31 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
     <div className="mt-4">
       {isOpen ? (
         <form onSubmit={handleSubmit} className="space-y-2">
+          {/* Type selector */}
+          <div>
+            <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)]">
+              Type
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {visibleTypes.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setFormState((prev) => ({ ...prev, card_type: t }))}
+                  className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition"
+                  style={{
+                    backgroundColor: formState.card_type === t ? CARD_TYPE_COLORS[t] + "20" : undefined,
+                    color: formState.card_type === t ? CARD_TYPE_COLORS[t] : CARD_TYPE_COLORS[t] + "88",
+                    borderColor: formState.card_type === t ? CARD_TYPE_COLORS[t] + "66" : CARD_TYPE_COLORS[t] + "33",
+                  }}
+                >
+                  <CardTypeIcon type={t} size={10} />
+                  {CARD_TYPE_LABELS[t]}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <input
             value={formState.title}
             onChange={(event) =>
@@ -131,7 +166,7 @@ export const NewCardForm = ({ onAdd }: NewCardFormProps) => {
               type="button"
               onClick={() => {
                 setIsOpen(false);
-                setFormState(initialFormState);
+                setFormState({ ...initialFormState, card_type: defaultType });
               }}
               className="rounded-full border border-[var(--stroke)] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--gray-text)] transition hover:text-[var(--navy-dark)]"
             >

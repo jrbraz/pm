@@ -228,11 +228,16 @@ export const saveNamedBoard = async (
 
 export const reserveNextCardId = async (
   username: string,
-  token: string
+  token: string,
+  cardType: string = "initiative"
 ): Promise<string> => {
   const response = await fetch(
     `/api/users/${encodeURIComponent(username)}/next-card-id`,
-    { method: "POST", headers: authHeader(token) }
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeader(token) },
+      body: JSON.stringify({ card_type: cardType }),
+    }
   );
   if (!response.ok) {
     throw new Error(await parseErrorMessage(response));

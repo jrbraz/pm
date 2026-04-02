@@ -25,6 +25,7 @@ import { PlusIcon, GearIcon } from "@/components/Icons";
 import { fetchBoardMembers, fetchNamedBoard, reserveNextCardId, saveNamedBoard } from "@/lib/api";
 import { useDebouncedCallback } from "@/lib/useDebounce";
 import {
+  ALLOWED_CHILD_TYPES,
   compareDueDates,
   createId,
   isDueThisWeek,
@@ -33,6 +34,7 @@ import {
   moveCard,
   type BoardData,
   type Card,
+  type CardType,
   type BoardMember,
   type Priority,
 } from "@/lib/kanban";
@@ -58,6 +60,7 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPriority, setFilterPriority] = useState<Priority | null>(null);
   const [filterDueDate, setFilterDueDate] = useState<DueDateFilter>("all");
+  const [filterCardType, setFilterCardType] = useState<CardType | null>(null);
   const [filterLabel, setFilterLabel] = useState("");
   const [sortMode, setSortMode] = useState<CardSortMode>("manual");
   const [externalUpdate, setExternalUpdate] = useState(false);
@@ -151,9 +154,10 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
   // Derived: filtered card IDs (for visual filtering)
   const filteredCardIds = useMemo(() => {
     if (!board) return new Set<string>();
-    if (!searchQuery && !filterPriority && filterDueDate === "all" && !filterLabel) return null;
+    if (!searchQuery && !filterPriority && filterDueDate === "all" && !filterCardType && !filterLabel) return null;
     const result = new Set<string>();
     Object.values(board.cards).forEach((card) => {
+      if (card.card_type === "sub_task") return; // sub-tasks don't appear in columns
       const matchesSearch =
         !searchQuery ||
         card.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -164,14 +168,15 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
         (filterDueDate === "today" && isDueToday(card.due_date)) ||
         (filterDueDate === "week" && isDueThisWeek(card.due_date)) ||
         (filterDueDate === "overdue" && isOverdueDate(card.due_date));
+      const matchesCardType = !filterCardType || card.card_type === filterCardType;
       const matchesLabel =
         !filterLabel || (card.labels ?? []).includes(filterLabel);
-      if (matchesSearch && matchesPriority && matchesDueDate && matchesLabel) {
+      if (matchesSearch && matchesPriority && matchesDueDate && matchesCardType && matchesLabel) {
         result.add(card.id);
       }
     });
     return result;
-  }, [board, searchQuery, filterPriority, filterDueDate, filterLabel]);
+  }, [board, searchQuery, filterPriority, filterDueDate, filterCardType, filterLabel]);
 
   // Board stats
   const boardStats = useMemo(() => {
@@ -259,13 +264,15 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
     columnId: string,
     title: string,
     details: string,
+    cardType: CardType,
     priority?: Priority | null,
     labels?: string[],
     dueDate?: string | null
   ) => {
     if (!token) return;
     try {
-      const id = await reserveNextCardId(username, token);
+      const id = await reserveNextCardId(username, token, cardType);
+      const isSub = cardType === "sub_task";
       applyBoardUpdate((currentBoard) => ({
         ...currentBoard,
         cards: {
@@ -273,7 +280,9 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
           [id]: {
             id,
             title,
-            details: details || "No details yet.",
+            details: details || "",
+            card_type: cardType,
+            parent_id: null,
             priority: priority ?? null,
             labels: labels ?? [],
             due_date: dueDate ?? null,
@@ -282,11 +291,14 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
             created_by: username,
           },
         },
-        columns: currentBoard.columns.map((column) =>
-          column.id === columnId
-            ? { ...column, cardIds: [...column.cardIds, id] }
-            : column
-        ),
+        // Sub-tasks don't go in columns
+        columns: isSub
+          ? currentBoard.columns
+          : currentBoard.columns.map((column) =>
+              column.id === columnId
+                ? { ...column, cardIds: [...column.cardIds, id] }
+                : column
+            ),
       }));
     } catch {
       setErrorMessage("Failed to create card.");
@@ -310,7 +322,7 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
   const handleDuplicateCard = async (columnId: string, card: Card) => {
     if (!token) return;
     try {
-      const newId = await reserveNextCardId(username, token);
+      const newId = await reserveNextCardId(username, token, card.card_type ?? "initiative");
       applyBoardUpdate((currentBoard) => ({
         ...currentBoard,
         cards: {
@@ -329,6 +341,46 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
       }));
     } catch {
       setErrorMessage("Failed to duplicate card.");
+    }
+  };
+
+  const handleAddChildCard = async (columnId: string, parentCard: Card, childType: CardType) => {
+    if (!token) return;
+    const parentType = parentCard.card_type ?? "initiative";
+    const childTypes = ALLOWED_CHILD_TYPES[parentType];
+    if (childTypes.length === 0) return;
+    const resolvedType = childType ?? childTypes[0];
+    try {
+      const id = await reserveNextCardId(username, token, resolvedType);
+      const isSub = resolvedType === "sub_task";
+      const newCard: Card = {
+        id,
+        title: "",
+        details: "",
+        card_type: resolvedType,
+        parent_id: parentCard.id,
+        priority: null,
+        labels: [],
+        due_date: null,
+        checklist: [],
+        assignee_ids: [],
+        created_by: username,
+      };
+      applyBoardUpdate((currentBoard) => ({
+        ...currentBoard,
+        cards: { ...currentBoard.cards, [id]: newCard },
+        columns: isSub
+          ? currentBoard.columns
+          : currentBoard.columns.map((col) =>
+              col.id === columnId
+                ? { ...col, cardIds: [...col.cardIds, id] }
+                : col
+            ),
+      }));
+      // Open the detail panel for the new child card
+      setEditingCard(newCard);
+    } catch {
+      setErrorMessage("Failed to create child card.");
     }
   };
 
@@ -355,12 +407,13 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
     }));
   };
 
-  const hasActiveFilter = !!(searchQuery || filterPriority || filterLabel || filterDueDate !== "all");
+  const hasActiveFilter = !!(searchQuery || filterPriority || filterLabel || filterCardType || filterDueDate !== "all");
 
   const handleClearFilters = useCallback(() => {
     setSearchQuery("");
     setFilterPriority(null);
     setFilterDueDate("all");
+    setFilterCardType(null);
     setFilterLabel("");
   }, []);
 
@@ -481,6 +534,8 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
           onFilterPriorityChange={setFilterPriority}
           filterDueDate={filterDueDate}
           onFilterDueDateChange={setFilterDueDate}
+          filterCardType={filterCardType}
+          onFilterCardTypeChange={setFilterCardType}
           filterLabel={filterLabel}
           onFilterLabelChange={setFilterLabel}
           sortMode={sortMode}
@@ -525,11 +580,13 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
                     <KanbanColumn
                       column={column}
                       cards={orderedCards}
+                      allCards={board.cards}
                       onRename={handleRenameColumn}
                       onAddCard={handleAddCard}
                       onDeleteCard={handleDeleteCard}
                       onEditCard={handleEditCard}
                       onDuplicateCard={handleDuplicateCard}
+                      onAddChildCard={handleAddChildCard}
                       onDeleteColumn={handleDeleteColumn}
                       dragDisabled={sortMode !== "manual"}
                     />

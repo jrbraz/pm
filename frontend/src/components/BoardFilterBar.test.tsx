@@ -9,6 +9,8 @@ const defaultProps = {
   onFilterPriorityChange: vi.fn(),
   filterDueDate: "all" as const,
   onFilterDueDateChange: vi.fn(),
+  filterCardType: null as null,
+  onFilterCardTypeChange: vi.fn(),
   filterLabel: "",
   onFilterLabelChange: vi.fn(),
   sortMode: "manual" as const,
@@ -41,6 +43,15 @@ describe("BoardFilterBar", () => {
     expect(screen.getByText("Overdue")).toBeInTheDocument();
   });
 
+  it("renders card type filter buttons", () => {
+    render(<BoardFilterBar {...defaultProps} />);
+    expect(screen.getByText("Initiative")).toBeInTheDocument();
+    expect(screen.getByText("Epic")).toBeInTheDocument();
+    expect(screen.getByText("Task")).toBeInTheDocument();
+    expect(screen.getByText("Story")).toBeInTheDocument();
+    expect(screen.getByText("Change Scope")).toBeInTheDocument();
+  });
+
   it("calls onSearchChange when typing", async () => {
     const onSearchChange = vi.fn();
     render(<BoardFilterBar {...defaultProps} onSearchChange={onSearchChange} />);
@@ -55,6 +66,14 @@ describe("BoardFilterBar", () => {
     const user = userEvent.setup();
     await user.click(screen.getByText("High"));
     expect(onFilterPriorityChange).toHaveBeenCalledWith("high");
+  });
+
+  it("calls onFilterCardTypeChange when clicking type", async () => {
+    const onFilterCardTypeChange = vi.fn();
+    render(<BoardFilterBar {...defaultProps} onFilterCardTypeChange={onFilterCardTypeChange} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Epic"));
+    expect(onFilterCardTypeChange).toHaveBeenCalledWith("epic");
   });
 
   it("shows label dropdown when labels exist", () => {

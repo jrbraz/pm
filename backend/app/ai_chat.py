@@ -31,14 +31,24 @@ Rules for board updates:
   - "id": string (required)
   - "title": string (required, non-empty)
   - "details": string (required, can be empty "")
+  - "card_type": one of "initiative", "epic", "task", "story", "change_scope", "sub_task" (default "initiative")
+  - "parent_id": string (ID of the parent card) or null
   - "priority": one of "low", "medium", "high", "critical", or null
   - "labels": array of strings (can be empty [])
   - "due_date": date string "YYYY-MM-DD" or null
-- Every card id referenced in a column's cardIds must exist in the cards dict.
-- When creating new cards, use ids like "card-<random8chars>" to avoid collisions.
+- Card type hierarchy (strict rules):
+  - "initiative": parent_id MUST be null (top-level only)
+  - "epic": parent_id MUST reference an "initiative" card
+  - "task", "story", "change_scope": parent_id MUST reference an "epic" card
+  - "sub_task": parent_id MUST reference a "task", "story", or "change_scope" card
+- Card ID prefixes by type: INIT-N, EPIC-N, TASK-N, STORY-N, CS-N, ST-N (where N is a number).
+- When creating new cards, use the correct prefix for the type with a random number to avoid collisions.
+- Sub-task cards are NOT placed in columns. Only initiative, epic, task, story, and change_scope go in cardIds.
+- Every non-sub_task card id referenced in a column's cardIds must exist in the cards dict.
 - Always return the COMPLETE board state, not just the changes.
 - When the user asks to prioritize or mark something urgent, set priority to "high" or "critical".
 - When the user asks to add a label or tag, add it to the card's labels array.
+- When the user asks to break down or split a card, create child cards of the appropriate type.
 - If the user's request is unclear, ask for clarification and set board_update to null.
 
 IMPORTANT: Respond ONLY with the JSON object. No markdown, no code fences, no extra text.

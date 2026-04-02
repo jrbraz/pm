@@ -21,8 +21,8 @@ class TestSequentialCardIds:
         token = _register_and_login(client, "alice")
         r = client.get("/api/users/alice/board", headers=_auth(token))
         board = r.json()["board"]
-        assert "CARD-1" in board["cards"]
-        assert "CARD-8" in board["cards"]
+        assert "INIT-1" in board["cards"]
+        assert "TASK-8" in board["cards"]
 
     def test_default_board_sets_card_seq_to_8(self, client: TestClient) -> None:
         token = _register_and_login(client, "alice")
@@ -31,7 +31,7 @@ class TestSequentialCardIds:
         # Next card should be CARD-9
         r = client.post("/api/users/alice/next-card-id", headers=_auth(token))
         assert r.status_code == 200
-        assert r.json()["card_id"] == "CARD-9"
+        assert r.json()["card_id"] == "INIT-9"
 
     def test_new_user_without_default_board_starts_at_1(self, client: TestClient) -> None:
         """User who creates a board manually (empty) gets CARD-1 as first card."""
@@ -43,7 +43,7 @@ class TestSequentialCardIds:
         client.post("/api/users/bob/boards", json={"name": "Second"}, headers=_auth(token))
         # Seq should be at 8 from the default, next is CARD-9
         r = client.post("/api/users/bob/next-card-id", headers=_auth(token))
-        assert r.json()["card_id"] == "CARD-9"
+        assert r.json()["card_id"] == "INIT-9"
 
     def test_next_card_id_increments(self, client: TestClient) -> None:
         token = _register_and_login(client, "charlie")
@@ -51,13 +51,13 @@ class TestSequentialCardIds:
         client.get("/api/users/charlie/boards", headers=_auth(token))
 
         r1 = client.post("/api/users/charlie/next-card-id", headers=_auth(token))
-        assert r1.json()["card_id"] == "CARD-9"
+        assert r1.json()["card_id"] == "INIT-9"
 
         r2 = client.post("/api/users/charlie/next-card-id", headers=_auth(token))
-        assert r2.json()["card_id"] == "CARD-10"
+        assert r2.json()["card_id"] == "INIT-10"
 
         r3 = client.post("/api/users/charlie/next-card-id", headers=_auth(token))
-        assert r3.json()["card_id"] == "CARD-11"
+        assert r3.json()["card_id"] == "INIT-11"
 
     def test_next_card_id_is_global_across_boards(self, client: TestClient) -> None:
         token = _register_and_login(client, "dave")
@@ -66,11 +66,11 @@ class TestSequentialCardIds:
 
         # Reserve a card for board A
         r1 = client.post("/api/users/dave/next-card-id", headers=_auth(token))
-        assert r1.json()["card_id"] == "CARD-9"
+        assert r1.json()["card_id"] == "INIT-9"
 
         # Reserve a card for board B -- should continue the sequence
         r2 = client.post("/api/users/dave/next-card-id", headers=_auth(token))
-        assert r2.json()["card_id"] == "CARD-10"
+        assert r2.json()["card_id"] == "INIT-10"
 
     def test_next_card_id_requires_auth(self, client: TestClient) -> None:
         r = client.post("/api/users/alice/next-card-id")

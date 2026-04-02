@@ -70,8 +70,11 @@ def update_user_password(db_path: Path, username: str, password_hash: str) -> No
         connection.commit()
 
 
-def reserve_next_card_id(db_path: Path, user_id: int) -> str:
-    """Atomically increment the user's card_seq and return the next card ID (e.g. 'CARD-9')."""
+def reserve_next_card_id(db_path: Path, user_id: int, prefix: str = "INIT") -> str:
+    """Atomically increment the user's card_seq and return the next card ID.
+
+    The prefix determines the ID format: e.g. prefix="EPIC" returns "EPIC-9".
+    """
     with sqlite3.connect(db_path) as connection:
         connection.execute(
             "UPDATE users SET card_seq = card_seq + 1 WHERE id = ?",
@@ -82,7 +85,7 @@ def reserve_next_card_id(db_path: Path, user_id: int) -> str:
             (user_id,),
         ).fetchone()
         connection.commit()
-        return f"CARD-{row[0]}"
+        return f"{prefix}-{row[0]}"
 
 
 def set_card_seq(db_path: Path, user_id: int, seq: int) -> None:

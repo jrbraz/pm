@@ -1,9 +1,12 @@
 "use client";
 
-import { PRIORITY_COLORS, PRIORITY_LABELS, type Priority } from "@/lib/kanban";
+import { CARD_TYPE_COLORS, CARD_TYPE_LABELS, PRIORITY_COLORS, PRIORITY_LABELS, type CardType, type Priority } from "@/lib/kanban";
+import { CardTypeIcon } from "@/components/Icons";
 
 export type DueDateFilter = "all" | "today" | "week" | "overdue";
 export type CardSortMode = "manual" | "due-date";
+
+const FILTER_CARD_TYPES: CardType[] = ["initiative", "epic", "task", "story", "change_scope"];
 
 type BoardFilterBarProps = {
   searchQuery: string;
@@ -12,6 +15,8 @@ type BoardFilterBarProps = {
   onFilterPriorityChange: (priority: Priority | null) => void;
   filterDueDate: DueDateFilter;
   onFilterDueDateChange: (filter: DueDateFilter) => void;
+  filterCardType: CardType | null;
+  onFilterCardTypeChange: (cardType: CardType | null) => void;
   filterLabel: string;
   onFilterLabelChange: (label: string) => void;
   sortMode: CardSortMode;
@@ -30,6 +35,8 @@ export const BoardFilterBar = ({
   onFilterPriorityChange,
   filterDueDate,
   onFilterDueDateChange,
+  filterCardType,
+  onFilterCardTypeChange,
   filterLabel,
   onFilterLabelChange,
   sortMode,
@@ -128,9 +135,42 @@ export const BoardFilterBar = ({
       </div>
 
       {/* Divider */}
-      {(allLabels.length > 0 || true) && (
-        <div className="hidden h-7 w-px bg-[var(--stroke)] sm:block" />
-      )}
+      <div className="hidden h-7 w-px bg-[var(--stroke)] sm:block" />
+
+      {/* Type group */}
+      <div>
+        <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)]">
+          Type
+        </p>
+        <div className="flex items-center gap-1">
+          {FILTER_CARD_TYPES.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => onFilterCardTypeChange(filterCardType === t ? null : t)}
+              className="flex items-center gap-0.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition"
+              style={
+                filterCardType === t
+                  ? {
+                      backgroundColor: CARD_TYPE_COLORS[t] + "20",
+                      color: CARD_TYPE_COLORS[t],
+                      borderColor: CARD_TYPE_COLORS[t] + "66",
+                    }
+                  : {
+                      borderColor: CARD_TYPE_COLORS[t] + "33",
+                      color: CARD_TYPE_COLORS[t] + "88",
+                    }
+              }
+            >
+              <CardTypeIcon type={t} size={9} />
+              {CARD_TYPE_LABELS[t]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="hidden h-7 w-px bg-[var(--stroke)] sm:block" />
 
       {/* Label + Sort group */}
       <div>

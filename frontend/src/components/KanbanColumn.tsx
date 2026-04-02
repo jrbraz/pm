@@ -2,18 +2,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import type { Card, Column, Priority } from "@/lib/kanban";
+import type { Card, CardType, Column, Priority } from "@/lib/kanban";
 import { KanbanCard } from "@/components/KanbanCard";
 import { NewCardForm } from "@/components/NewCardForm";
 
 type KanbanColumnProps = {
   column: Column;
   cards: Card[];
+  allCards: Record<string, Card>;
   onRename: (columnId: string, title: string) => void;
-  onAddCard: (columnId: string, title: string, details: string, priority?: Priority | null, labels?: string[], dueDate?: string | null) => void;
+  onAddCard: (columnId: string, title: string, details: string, cardType: CardType, priority?: Priority | null, labels?: string[], dueDate?: string | null) => void;
   onDeleteCard: (columnId: string, cardId: string) => void;
   onEditCard: (card: Card) => void;
   onDuplicateCard: (columnId: string, card: Card) => void;
+  onAddChildCard: (columnId: string, parentCard: Card, childType: CardType) => void;
   onDeleteColumn: (columnId: string) => void;
   dragDisabled?: boolean;
 };
@@ -21,11 +23,13 @@ type KanbanColumnProps = {
 export const KanbanColumn = ({
   column,
   cards,
+  allCards,
   onRename,
   onAddCard,
   onDeleteCard,
   onEditCard,
   onDuplicateCard,
+  onAddChildCard,
   onDeleteColumn,
   dragDisabled = false,
 }: KanbanColumnProps) => {
@@ -106,9 +110,12 @@ export const KanbanColumn = ({
             <KanbanCard
               key={card.id}
               card={card}
+              parentCard={card.parent_id ? allCards[card.parent_id] ?? null : null}
               onDelete={(cardId) => onDeleteCard(column.id, cardId)}
               onEdit={onEditCard}
               onDuplicate={(c) => onDuplicateCard(column.id, c)}
+              onAddChild={(c, ct) => onAddChildCard(column.id, c, ct)}
+              onOpenParent={(p) => onEditCard(p)}
               dragDisabled={dragDisabled}
             />
           ))}
@@ -120,8 +127,9 @@ export const KanbanColumn = ({
         )}
       </div>
       <NewCardForm
-        onAdd={(title, details, priority, labels, dueDate) =>
-          onAddCard(column.id, title, details, priority, labels, dueDate)
+        allowedTypes={["initiative"]}
+        onAdd={(title, details, cardType, priority, labels, dueDate) =>
+          onAddCard(column.id, title, details, cardType, priority, labels, dueDate)
         }
       />
     </section>

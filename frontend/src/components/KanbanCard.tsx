@@ -1,8 +1,11 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import clsx from "clsx";
-import type { Card } from "@/lib/kanban";
+import type { Card, CardType } from "@/lib/kanban";
 import {
+  ALLOWED_CHILD_TYPES,
+  CARD_TYPE_LABELS,
+  CARD_TYPE_COLORS,
   PRIORITY_COLORS,
   PRIORITY_LABELS,
   formatDueDateChip,
@@ -11,22 +14,31 @@ import {
   isDueToday,
   isOverdueDate,
 } from "@/lib/kanban";
+import { CardTypeIcon } from "@/components/Icons";
 
 type KanbanCardProps = {
   card: Card;
+  parentCard?: Card | null;
   onDelete: (cardId: string) => void;
   onEdit: (card: Card) => void;
   onDuplicate: (card: Card) => void;
+  onAddChild?: (card: Card, childType: CardType) => void;
+  onOpenParent?: (parentCard: Card) => void;
   dragDisabled?: boolean;
 };
 
 export const KanbanCard = ({
   card,
+  parentCard,
   onDelete,
   onEdit,
   onDuplicate,
+  onAddChild,
+  onOpenParent,
   dragDisabled = false,
 }: KanbanCardProps) => {
+  const childTypes = ALLOWED_CHILD_TYPES[card.card_type ?? "initiative"];
+  const canHaveChildren = childTypes.length > 0;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id, disabled: dragDisabled });
 
@@ -46,13 +58,14 @@ export const KanbanCard = ({
   const hasChecklist = checklistTotal > 0;
 
   const assignees = card.assignee_ids ?? [];
+  const typeColor = card.card_type ? CARD_TYPE_COLORS[card.card_type] : "#888";
 
   return (
     <article
       ref={setNodeRef}
       style={style}
       className={clsx(
-        "group rounded-2xl border bg-white px-3 py-3 shadow-[0_2px_8px_rgba(3,33,71,0.07)]",
+        "group rounded-2xl border bg-white shadow-[0_2px_8px_rgba(3,33,71,0.07)]",
         "cursor-pointer transition-all duration-150 hover:border-[#b0b8c4] hover:shadow-[0_4px_12px_rgba(3,33,71,0.1)]",
         isOverdue
           ? "border-red-200 bg-red-50/40 shadow-[0_4px_14px_rgba(229,62,62,0.08)]"
@@ -62,51 +75,125 @@ export const KanbanCard = ({
       data-testid={`card-${card.id}`}
       onClick={() => onEdit(card)}
     >
-      <div className="flex items-start gap-2">
-        <button
-          type="button"
-          className={clsx(
-            "mt-0.5 shrink-0 touch-none text-[var(--gray-text)] transition",
-            dragDisabled
-              ? "cursor-not-allowed opacity-20"
-              : "cursor-grab opacity-0 group-hover:opacity-40 active:cursor-grabbing"
-          )}
-          aria-label="Drag card"
-          onClick={(e) => e.stopPropagation()}
-          disabled={dragDisabled}
-          {...attributes}
-          {...listeners}
-        >
-          <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden="true">
-            <circle cx="2.5" cy="2" r="1.5" />
-            <circle cx="7.5" cy="2" r="1.5" />
-            <circle cx="2.5" cy="7" r="1.5" />
-            <circle cx="7.5" cy="7" r="1.5" />
-            <circle cx="2.5" cy="12" r="1.5" />
-            <circle cx="7.5" cy="12" r="1.5" />
-          </svg>
-        </button>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <p className="text-[10px] font-medium text-[var(--gray-text)] opacity-60">{card.id}</p>
+      {/* Top color bar based on type */}
+      <div
+        className="h-1 rounded-t-2xl"
+        style={{ backgroundColor: typeColor }}
+      />
+
+      <div className="px-3 pb-3 pt-2">
+        {/* Header: type + ID + actions */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {/* Drag handle */}
+            <button
+              type="button"
+              className={clsx(
+                "shrink-0 touch-none text-[var(--gray-text)] transition",
+                dragDisabled
+                  ? "cursor-not-allowed opacity-20"
+                  : "cursor-grab opacity-0 group-hover:opacity-40 active:cursor-grabbing"
+              )}
+              aria-label="Drag card"
+              onClick={(e) => e.stopPropagation()}
+              disabled={dragDisabled}
+              {...attributes}
+              {...listeners}
+            >
+              <svg width="8" height="12" viewBox="0 0 10 14" fill="currentColor" aria-hidden="true">
+                <circle cx="2.5" cy="2" r="1.5" />
+                <circle cx="7.5" cy="2" r="1.5" />
+                <circle cx="2.5" cy="7" r="1.5" />
+                <circle cx="7.5" cy="7" r="1.5" />
+                <circle cx="2.5" cy="12" r="1.5" />
+                <circle cx="7.5" cy="12" r="1.5" />
+              </svg>
+            </button>
+
+            {/* Type badge */}
+            {card.card_type && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                style={{
+                  backgroundColor: typeColor + "15",
+                  color: typeColor,
+                }}
+              >
+                <CardTypeIcon type={card.card_type} size={10} />
+                {CARD_TYPE_LABELS[card.card_type]}
+              </span>
+            )}
+
+            {/* Card ID */}
+            <span className="text-[10px] font-mono font-medium text-[var(--gray-text)]">{card.id}</span>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onDuplicate(card); }}
+              className="rounded-full p-1 text-[var(--gray-text)] hover:bg-blue-50 hover:text-[var(--primary-blue)]"
+              aria-label={`Duplicate ${card.title}`}
+              title="Duplicate"
+            >
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z" />
+                <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onDelete(card.id); }}
+              className="rounded-full p-1 text-[var(--gray-text)] hover:bg-red-50 hover:text-red-400"
+              aria-label={`Delete ${card.title}`}
+              title="Delete"
+            >
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Meta row: created by + parent */}
+        {(card.created_by || parentCard) && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-dashed border-[var(--stroke)] pb-1.5">
             {card.created_by && (
-              <span className="flex items-center gap-0.5 text-[10px] text-[var(--gray-text)] opacity-60">
-                <svg width="8" height="8" viewBox="0 0 16 16" fill="currentColor">
+              <span className="flex items-center gap-1 text-[10px] text-[var(--gray-text)]">
+                <svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor" className="opacity-50">
                   <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z" />
                 </svg>
                 {card.created_by}
               </span>
             )}
+            {parentCard && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onOpenParent?.(parentCard); }}
+                className="flex items-center gap-1 text-[10px] text-[var(--primary-blue)] hover:underline"
+                title={`Open parent: ${parentCard.title}`}
+              >
+                <CardTypeIcon type={parentCard.card_type ?? "initiative"} size={9} />
+                <span className="max-w-[120px] truncate">{parentCard.id}</span>
+              </button>
+            )}
           </div>
-          <h4 className="font-display text-sm font-semibold leading-snug text-[var(--navy-dark)]">
-            {card.title}
-          </h4>
-          {card.details && (
-            <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--gray-text)]">{card.details}</p>
-          )}
+        )}
 
-          {/* Priority + labels + due date row */}
-          <div className="mt-2 flex flex-wrap items-center gap-1">
+        {/* Title */}
+        <h4 className="mt-2 font-display text-[13px] font-semibold leading-snug text-[var(--navy-dark)]">
+          {card.title || <span className="italic text-[var(--gray-text)]">Untitled</span>}
+        </h4>
+
+        {/* Description */}
+        {card.details && (
+          <p className="mt-1 line-clamp-2 text-[11px] leading-[1.6] text-[var(--gray-text)]">{card.details}</p>
+        )}
+
+        {/* Tags: priority + labels + due date + checklist */}
+        {(card.priority || (card.labels && card.labels.length > 0) || card.due_date || hasChecklist) && (
+          <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-dashed border-[var(--stroke)] pt-2">
             {card.priority && (
               <span
                 className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
@@ -155,60 +242,68 @@ export const KanbanCard = ({
               </span>
             )}
           </div>
+        )}
 
-          {/* Assignee avatars */}
-          {assignees.length > 0 && (
-            <div className="mt-2 flex items-center gap-1">
-              {assignees.slice(0, 3).map((userId) => (
-                <div
-                  key={userId}
-                  className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold text-white"
-                  style={{ backgroundColor: "var(--primary-blue)" }}
-                  title={userId}
+        {/* Assignee avatars */}
+        {assignees.length > 0 && (
+          <div className="mt-2 flex items-center gap-1">
+            {assignees.slice(0, 3).map((userId) => (
+              <div
+                key={userId}
+                className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold text-white"
+                style={{ backgroundColor: "var(--primary-blue)" }}
+                title={userId}
+              >
+                {getInitials(userId)}
+              </div>
+            ))}
+            {assignees.length > 3 && (
+              <span className="text-[10px] font-semibold text-[var(--gray-text)]">
+                +{assignees.length - 3}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Add child -- single button for 1 child type, chooser for multiple */}
+      {canHaveChildren && onAddChild && (
+        <div className="border-t border-dashed border-[var(--stroke)]">
+          {childTypes.length === 1 ? (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onAddChild(card, childTypes[0]); }}
+              className="flex w-full items-center justify-center gap-1 rounded-b-2xl py-1.5 text-[10px] font-semibold text-[var(--gray-text)] transition hover:bg-[var(--surface)] hover:text-[var(--primary-blue)]"
+            >
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+              </svg>
+              Add {CARD_TYPE_LABELS[childTypes[0]].toLowerCase()}
+            </button>
+          ) : (
+            <div className="flex items-center rounded-b-2xl">
+              {childTypes.map((ct, i) => (
+                <button
+                  key={ct}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onAddChild(card, ct); }}
+                  className={clsx(
+                    "flex flex-1 items-center justify-center gap-0.5 py-1.5 text-[9px] font-semibold transition hover:bg-[var(--surface)]",
+                    i > 0 && "border-l border-dashed border-[var(--stroke)]",
+                    i === 0 && "rounded-bl-2xl",
+                    i === childTypes.length - 1 && "rounded-br-2xl"
+                  )}
+                  style={{ color: CARD_TYPE_COLORS[ct] }}
+                  title={`Add ${CARD_TYPE_LABELS[ct]}`}
                 >
-                  {getInitials(userId)}
-                </div>
+                  <CardTypeIcon type={ct} size={9} />
+                  {CARD_TYPE_LABELS[ct]}
+                </button>
               ))}
-              {assignees.length > 3 && (
-                <span className="text-[10px] font-semibold text-[var(--gray-text)]">
-                  +{assignees.length - 3}
-                </span>
-              )}
             </div>
           )}
         </div>
-        <div className="mt-0.5 flex shrink-0 flex-col gap-1 opacity-0 transition group-hover:opacity-100">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDuplicate(card);
-            }}
-            className="rounded-full p-1 text-[var(--gray-text)] hover:bg-blue-50 hover:text-[var(--primary-blue)]"
-            aria-label={`Duplicate ${card.title}`}
-            title="Duplicate card"
-          >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z" />
-              <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(card.id);
-            }}
-            className="rounded-full p-1 text-[var(--gray-text)] hover:bg-red-50 hover:text-red-400"
-            aria-label={`Delete ${card.title}`}
-            title="Delete card"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          </button>
-        </div>
-      </div>
+      )}
     </article>
   );
 };

@@ -20,66 +20,82 @@ from app.db import (
 
 DEFAULT_BOARD = BoardData(
     columns=[
-        {"id": "col-backlog", "title": "Backlog", "cardIds": ["CARD-1", "CARD-2"]},
-        {"id": "col-discovery", "title": "Discovery", "cardIds": ["CARD-3"]},
-        {"id": "col-progress", "title": "In Progress", "cardIds": ["CARD-4", "CARD-5"]},
-        {"id": "col-review", "title": "Review", "cardIds": ["CARD-6"]},
-        {"id": "col-done", "title": "Done", "cardIds": ["CARD-7", "CARD-8"]},
+        {"id": "col-backlog", "title": "Backlog", "cardIds": ["INIT-1", "INIT-2"]},
+        {"id": "col-discovery", "title": "Discovery", "cardIds": ["EPIC-3", "EPIC-4", "EPIC-5"]},
+        {"id": "col-progress", "title": "In Progress", "cardIds": ["TASK-6"]},
+        {"id": "col-review", "title": "Review", "cardIds": ["TASK-7"]},
+        {"id": "col-done", "title": "Done", "cardIds": ["TASK-8"]},
     ],
     cards={
-        "CARD-1": {
-            "id": "CARD-1",
+        "INIT-1": {
+            "id": "INIT-1",
             "title": "Align roadmap themes",
             "details": "Draft quarterly themes with impact statements and metrics.",
+            "card_type": "initiative",
+            "parent_id": None,
             "priority": "high",
             "labels": ["strategy"],
         },
-        "CARD-2": {
-            "id": "CARD-2",
+        "INIT-2": {
+            "id": "INIT-2",
             "title": "Gather customer signals",
             "details": "Review support tags, sales notes, and churn feedback.",
+            "card_type": "initiative",
+            "parent_id": None,
             "priority": "medium",
             "labels": ["research"],
         },
-        "CARD-3": {
-            "id": "CARD-3",
+        "EPIC-3": {
+            "id": "EPIC-3",
             "title": "Prototype analytics view",
             "details": "Sketch initial dashboard layout and key drill-downs.",
+            "card_type": "epic",
+            "parent_id": "INIT-1",
             "priority": "medium",
             "labels": ["design"],
         },
-        "CARD-4": {
-            "id": "CARD-4",
+        "EPIC-4": {
+            "id": "EPIC-4",
             "title": "Refine status language",
             "details": "Standardize column labels and tone across the board.",
+            "card_type": "epic",
+            "parent_id": "INIT-1",
             "priority": "low",
             "labels": [],
         },
-        "CARD-5": {
-            "id": "CARD-5",
+        "EPIC-5": {
+            "id": "EPIC-5",
             "title": "Design card layout",
             "details": "Add hierarchy and spacing for scanning dense lists.",
+            "card_type": "epic",
+            "parent_id": "INIT-2",
             "priority": "medium",
             "labels": ["design"],
         },
-        "CARD-6": {
-            "id": "CARD-6",
+        "TASK-6": {
+            "id": "TASK-6",
             "title": "QA micro-interactions",
             "details": "Verify hover, focus, and loading states.",
+            "card_type": "task",
+            "parent_id": "EPIC-3",
             "priority": "high",
             "labels": ["qa"],
         },
-        "CARD-7": {
-            "id": "CARD-7",
+        "TASK-7": {
+            "id": "TASK-7",
             "title": "Ship marketing page",
             "details": "Final copy approved and asset pack delivered.",
+            "card_type": "task",
+            "parent_id": "EPIC-4",
             "priority": None,
             "labels": ["marketing"],
         },
-        "CARD-8": {
-            "id": "CARD-8",
+        "TASK-8": {
+            "id": "TASK-8",
             "title": "Close onboarding sprint",
             "details": "Document release notes and share internally.",
+            "card_type": "task",
+            "parent_id": "EPIC-5",
             "priority": None,
             "labels": [],
         },

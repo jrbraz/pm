@@ -5,7 +5,8 @@ import { ChecklistSection } from "@/components/ChecklistSection";
 import { CommentsSection } from "@/components/CommentsSection";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { fetchBoardActivity } from "@/lib/api";
-import { PRIORITY_COLORS, PRIORITY_LABELS, type ActivityEntry, type Card, type ChecklistItem, type Priority } from "@/lib/kanban";
+import { CARD_TYPE_COLORS, CARD_TYPE_LABELS, PRIORITY_COLORS, PRIORITY_LABELS, type ActivityEntry, type Card, type ChecklistItem, type Priority } from "@/lib/kanban";
+import { CardTypeIcon } from "@/components/Icons";
 import { useAuth } from "@/components/AuthContext";
 
 type Tab = "details" | "checklist" | "comments" | "activity";
@@ -122,9 +123,22 @@ export const CardDetailPanel = ({
         {/* Header */}
         <div className="flex shrink-0 items-start gap-3 border-b border-[var(--stroke)] px-6 py-4">
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--gray-text)]">
-              {columnTitle}
-            </p>
+            <div className="flex items-center gap-2">
+              {card.card_type && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                  style={{
+                    backgroundColor: CARD_TYPE_COLORS[card.card_type] + "15",
+                    color: CARD_TYPE_COLORS[card.card_type],
+                  }}
+                >
+                  <CardTypeIcon type={card.card_type} size={11} />
+                  {CARD_TYPE_LABELS[card.card_type]}
+                </span>
+              )}
+              <span className="font-mono text-[10px] font-medium text-[var(--gray-text)]">{card.id}</span>
+              <span className="text-[10px] text-[var(--gray-text)] opacity-60">{columnTitle}</span>
+            </div>
             <input
               value={title}
               onChange={(e) => { setTitle(e.target.value); markDirty(); }}

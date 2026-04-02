@@ -1,5 +1,7 @@
 export type Priority = "low" | "medium" | "high" | "critical";
 
+export type CardType = "initiative" | "epic" | "task" | "story" | "change_scope" | "sub_task";
+
 export type ChecklistItem = {
   id: string;
   text: string;
@@ -10,6 +12,8 @@ export type Card = {
   id: string;
   title: string;
   details: string;
+  card_type?: CardType;
+  parent_id?: string | null;
   priority?: Priority | null;
   labels?: string[];
   due_date?: string | null;
@@ -244,6 +248,42 @@ export const formatDueDateChip = (
   const parsed = new Date(`${dueDate}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return dueDate;
   return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+};
+
+export const CARD_TYPE_COLORS: Record<CardType, string> = {
+  initiative: "#753991",
+  epic: "#209dd7",
+  task: "#38a169",
+  story: "#ecad0a",
+  change_scope: "#e53e3e",
+  sub_task: "#888888",
+};
+
+export const CARD_TYPE_LABELS: Record<CardType, string> = {
+  initiative: "Initiative",
+  epic: "Epic",
+  task: "Task",
+  story: "Story",
+  change_scope: "Change Scope",
+  sub_task: "Sub-task",
+};
+
+export const CARD_TYPE_PREFIXES: Record<CardType, string> = {
+  initiative: "INIT",
+  epic: "EPIC",
+  task: "TASK",
+  story: "STORY",
+  change_scope: "CS",
+  sub_task: "ST",
+};
+
+export const ALLOWED_CHILD_TYPES: Record<CardType, CardType[]> = {
+  initiative: ["epic"],
+  epic: ["task", "story", "change_scope"],
+  task: ["sub_task"],
+  story: ["sub_task"],
+  change_scope: ["sub_task"],
+  sub_task: [],
 };
 
 export const PRIORITY_COLORS: Record<Priority, string> = {
