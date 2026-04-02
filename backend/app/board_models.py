@@ -18,6 +18,7 @@ class Card(BaseModel):
     due_date: str | None = None
     checklist: list[ChecklistItem] = Field(default_factory=list)
     assignee_ids: list[str] = Field(default_factory=list)
+    created_by: str | None = None
 
 
 class Column(BaseModel):

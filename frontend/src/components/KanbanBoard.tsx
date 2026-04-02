@@ -255,6 +255,7 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
             due_date: dueDate ?? null,
             checklist: [],
             assignee_ids: [],
+            created_by: username,
           },
         },
         columns: currentBoard.columns.map((column) =>

@@ -15,6 +15,7 @@ export type Card = {
   due_date?: string | null;
   checklist?: ChecklistItem[];
   assignee_ids?: string[];
+  created_by?: string | null;
 };
 
 export type Column = {
