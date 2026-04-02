@@ -283,6 +283,31 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
     }));
   };
 
+  const handleDuplicateCard = async (columnId: string, card: Card) => {
+    if (!token) return;
+    try {
+      const newId = await reserveNextCardId(username, token);
+      applyBoardUpdate((currentBoard) => ({
+        ...currentBoard,
+        cards: {
+          ...currentBoard.cards,
+          [newId]: {
+            ...card,
+            id: newId,
+            created_by: username,
+          },
+        },
+        columns: currentBoard.columns.map((col) =>
+          col.id === columnId
+            ? { ...col, cardIds: [...col.cardIds, newId] }
+            : col
+        ),
+      }));
+    } catch {
+      setErrorMessage("Failed to duplicate card.");
+    }
+  };
+
   const handleEditCard = (card: Card) => {
     setEditingCard(card);
   };
@@ -465,6 +490,7 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
                       onAddCard={handleAddCard}
                       onDeleteCard={handleDeleteCard}
                       onEditCard={handleEditCard}
+                      onDuplicateCard={handleDuplicateCard}
                       onDeleteColumn={handleDeleteColumn}
                     />
                   </div>
