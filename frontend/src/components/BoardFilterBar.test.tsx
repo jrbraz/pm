@@ -36,8 +36,8 @@ describe("BoardFilterBar", () => {
 
   it("renders due-date filter buttons", () => {
     render(<BoardFilterBar {...defaultProps} />);
-    expect(screen.getByText("Due today")).toBeInTheDocument();
-    expect(screen.getByText("Due this week")).toBeInTheDocument();
+    expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(screen.getByText("This week")).toBeInTheDocument();
     expect(screen.getByText("Overdue")).toBeInTheDocument();
   });
 
@@ -68,7 +68,7 @@ describe("BoardFilterBar", () => {
     const onFilterDueDateChange = vi.fn();
     render(<BoardFilterBar {...defaultProps} onFilterDueDateChange={onFilterDueDateChange} />);
     const user = userEvent.setup();
-    await user.click(screen.getByText("Due today"));
+    await user.click(screen.getByText("Today"));
     expect(onFilterDueDateChange).toHaveBeenCalledWith("today");
   });
 
@@ -82,19 +82,19 @@ describe("BoardFilterBar", () => {
 
   it("shows Clear button when filter is active", () => {
     render(<BoardFilterBar {...defaultProps} hasActiveFilter={true} />);
-    expect(screen.getByText("Clear")).toBeInTheDocument();
+    expect(screen.getByText("Clear all")).toBeInTheDocument();
   });
 
   it("does not show Clear button when no filter active", () => {
     render(<BoardFilterBar {...defaultProps} hasActiveFilter={false} />);
-    expect(screen.queryByText("Clear")).not.toBeInTheDocument();
+    expect(screen.queryByText("Clear all")).not.toBeInTheDocument();
   });
 
   it("calls onClearFilters when Clear is clicked", async () => {
     const onClearFilters = vi.fn();
     render(<BoardFilterBar {...defaultProps} hasActiveFilter={true} onClearFilters={onClearFilters} />);
     const user = userEvent.setup();
-    await user.click(screen.getByText("Clear"));
+    await user.click(screen.getByText("Clear all"));
     expect(onClearFilters).toHaveBeenCalledTimes(1);
   });
 });

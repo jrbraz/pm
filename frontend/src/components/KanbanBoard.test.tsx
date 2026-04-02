@@ -152,7 +152,7 @@ describe("KanbanBoard", () => {
     renderBoard();
 
     expect(await screen.findAllByTestId(/column-/i)).toHaveLength(5);
-    await userEvent.click(screen.getByRole("button", { name: "Due today" }));
+    await userEvent.click(screen.getByRole("button", { name: "Today" }));
 
     expect(screen.getByText("Task one")).toBeInTheDocument();
     expect(screen.queryByText("Task three")).not.toBeInTheDocument();
