@@ -7,8 +7,12 @@ const defaultProps = {
   onSearchChange: vi.fn(),
   filterPriority: null as null,
   onFilterPriorityChange: vi.fn(),
+  filterDueDate: "all" as const,
+  onFilterDueDateChange: vi.fn(),
   filterLabel: "",
   onFilterLabelChange: vi.fn(),
+  sortMode: "manual" as const,
+  onSortModeChange: vi.fn(),
   allLabels: [] as string[],
   hasActiveFilter: false,
   onClearFilters: vi.fn(),
@@ -28,6 +32,13 @@ describe("BoardFilterBar", () => {
     expect(screen.getByText("High")).toBeInTheDocument();
     expect(screen.getByText("Medium")).toBeInTheDocument();
     expect(screen.getByText("Low")).toBeInTheDocument();
+  });
+
+  it("renders due-date filter buttons", () => {
+    render(<BoardFilterBar {...defaultProps} />);
+    expect(screen.getByText("Due today")).toBeInTheDocument();
+    expect(screen.getByText("Due this week")).toBeInTheDocument();
+    expect(screen.getByText("Overdue")).toBeInTheDocument();
   });
 
   it("calls onSearchChange when typing", async () => {
@@ -51,6 +62,22 @@ describe("BoardFilterBar", () => {
     expect(screen.getByText("All labels")).toBeInTheDocument();
     expect(screen.getByText("bug")).toBeInTheDocument();
     expect(screen.getByText("feature")).toBeInTheDocument();
+  });
+
+  it("calls onFilterDueDateChange when clicking due-date filter", async () => {
+    const onFilterDueDateChange = vi.fn();
+    render(<BoardFilterBar {...defaultProps} onFilterDueDateChange={onFilterDueDateChange} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Due today"));
+    expect(onFilterDueDateChange).toHaveBeenCalledWith("today");
+  });
+
+  it("calls onSortModeChange when sort changes", async () => {
+    const onSortModeChange = vi.fn();
+    render(<BoardFilterBar {...defaultProps} onSortModeChange={onSortModeChange} />);
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByLabelText(/card sort/i), "due-date");
+    expect(onSortModeChange).toHaveBeenCalledWith("due-date");
   });
 
   it("shows Clear button when filter is active", () => {

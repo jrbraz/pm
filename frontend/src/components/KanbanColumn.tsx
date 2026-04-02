@@ -15,6 +15,7 @@ type KanbanColumnProps = {
   onEditCard: (card: Card) => void;
   onDuplicateCard: (columnId: string, card: Card) => void;
   onDeleteColumn: (columnId: string) => void;
+  dragDisabled?: boolean;
 };
 
 export const KanbanColumn = ({
@@ -26,6 +27,7 @@ export const KanbanColumn = ({
   onEditCard,
   onDuplicateCard,
   onDeleteColumn,
+  dragDisabled = false,
 }: KanbanColumnProps) => {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const [localTitle, setLocalTitle] = useState(column.title);
@@ -99,7 +101,7 @@ export const KanbanColumn = ({
         </button>
       </div>
       <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-        <SortableContext items={column.cardIds} strategy={verticalListSortingStrategy}>
+        <SortableContext items={cards.map((card) => card.id)} strategy={verticalListSortingStrategy}>
           {cards.map((card) => (
             <KanbanCard
               key={card.id}
@@ -107,6 +109,7 @@ export const KanbanColumn = ({
               onDelete={(cardId) => onDeleteCard(column.id, cardId)}
               onEdit={onEditCard}
               onDuplicate={(c) => onDuplicateCard(column.id, c)}
+              dragDisabled={dragDisabled}
             />
           ))}
         </SortableContext>

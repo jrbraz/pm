@@ -16,11 +16,26 @@ import { KanbanColumn } from "@/components/KanbanColumn";
 import { CardDetailPanel } from "@/components/CardDetailPanel";
 import { BoardSettingsPanel } from "@/components/BoardSettingsPanel";
 import { BoardStatsBar } from "@/components/BoardStatsBar";
-import { BoardFilterBar } from "@/components/BoardFilterBar";
+import {
+  BoardFilterBar,
+  type CardSortMode,
+  type DueDateFilter,
+} from "@/components/BoardFilterBar";
 import { PlusIcon, GearIcon } from "@/components/Icons";
 import { fetchBoardMembers, fetchNamedBoard, reserveNextCardId, saveNamedBoard } from "@/lib/api";
 import { useDebouncedCallback } from "@/lib/useDebounce";
-import { createId, moveCard, type BoardData, type Card, type BoardMember, type Priority } from "@/lib/kanban";
+import {
+  compareDueDates,
+  createId,
+  isDueThisWeek,
+  isDueToday,
+  isOverdueDate,
+  moveCard,
+  type BoardData,
+  type Card,
+  type BoardMember,
+  type Priority,
+} from "@/lib/kanban";
 import { useAuth } from "@/components/AuthContext";
 
 type KanbanBoardProps = {
@@ -42,7 +57,9 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPriority, setFilterPriority] = useState<Priority | null>(null);
+  const [filterDueDate, setFilterDueDate] = useState<DueDateFilter>("all");
   const [filterLabel, setFilterLabel] = useState("");
+  const [sortMode, setSortMode] = useState<CardSortMode>("manual");
   const [externalUpdate, setExternalUpdate] = useState(false);
 
   const sensors = useSensors(
@@ -134,7 +151,7 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
   // Derived: filtered card IDs (for visual filtering)
   const filteredCardIds = useMemo(() => {
     if (!board) return new Set<string>();
-    if (!searchQuery && !filterPriority && !filterLabel) return null;
+    if (!searchQuery && !filterPriority && filterDueDate === "all" && !filterLabel) return null;
     const result = new Set<string>();
     Object.values(board.cards).forEach((card) => {
       const matchesSearch =
@@ -142,14 +159,19 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
         card.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         card.details.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesPriority = !filterPriority || card.priority === filterPriority;
+      const matchesDueDate =
+        filterDueDate === "all" ||
+        (filterDueDate === "today" && isDueToday(card.due_date)) ||
+        (filterDueDate === "week" && isDueThisWeek(card.due_date)) ||
+        (filterDueDate === "overdue" && isOverdueDate(card.due_date));
       const matchesLabel =
         !filterLabel || (card.labels ?? []).includes(filterLabel);
-      if (matchesSearch && matchesPriority && matchesLabel) {
+      if (matchesSearch && matchesPriority && matchesDueDate && matchesLabel) {
         result.add(card.id);
       }
     });
     return result;
-  }, [board, searchQuery, filterPriority, filterLabel]);
+  }, [board, searchQuery, filterPriority, filterDueDate, filterLabel]);
 
   // Board stats
   const boardStats = useMemo(() => {
@@ -162,9 +184,7 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
       medium: cards.filter((c) => c.priority === "medium").length,
     };
     const overdue = cards.filter(
-      (c) =>
-        c.due_date &&
-        new Date(c.due_date) < new Date(new Date().toISOString().split("T")[0])
+      (c) => isOverdueDate(c.due_date)
     ).length;
     return { total, byPriority, overdue };
   }, [board]);
@@ -195,6 +215,10 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
     setActiveCardId(null);
 
     if (!board || !over || active.id === over.id) {
+      return;
+    }
+
+    if (sortMode !== "manual") {
       return;
     }
 
@@ -331,11 +355,12 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
     }));
   };
 
-  const hasActiveFilter = !!(searchQuery || filterPriority || filterLabel);
+  const hasActiveFilter = !!(searchQuery || filterPriority || filterLabel || filterDueDate !== "all");
 
   const handleClearFilters = useCallback(() => {
     setSearchQuery("");
     setFilterPriority(null);
+    setFilterDueDate("all");
     setFilterLabel("");
   }, []);
 
@@ -454,12 +479,22 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
           onSearchChange={setSearchQuery}
           filterPriority={filterPriority}
           onFilterPriorityChange={setFilterPriority}
+          filterDueDate={filterDueDate}
+          onFilterDueDateChange={setFilterDueDate}
           filterLabel={filterLabel}
           onFilterLabelChange={setFilterLabel}
+          sortMode={sortMode}
+          onSortModeChange={setSortMode}
           allLabels={allLabels}
           hasActiveFilter={hasActiveFilter}
           onClearFilters={handleClearFilters}
         />
+
+        {sortMode === "due-date" && (
+          <div className="rounded-xl border border-[var(--primary-blue)]/20 bg-[var(--primary-blue)]/5 px-4 py-2 text-xs font-medium text-[var(--navy-dark)]">
+            Cards are sorted by due date inside each column. Drag and drop is disabled in this view.
+          </div>
+        )}
 
         <DndContext
           sensors={sensors}
@@ -480,18 +515,23 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
                     if (filteredCardIds === null) return true;
                     return filteredCardIds.has(card.id);
                   });
+                const orderedCards =
+                  sortMode === "due-date"
+                    ? [...visibleCards].sort(compareDueDates)
+                    : visibleCards;
 
                 return (
                   <div key={column.id} className="group" style={{ flex: "1 0 0", minWidth: "200px" }}>
                     <KanbanColumn
                       column={column}
-                      cards={visibleCards}
+                      cards={orderedCards}
                       onRename={handleRenameColumn}
                       onAddCard={handleAddCard}
                       onDeleteCard={handleDeleteCard}
                       onEditCard={handleEditCard}
                       onDuplicateCard={handleDuplicateCard}
                       onDeleteColumn={handleDeleteColumn}
+                      dragDisabled={sortMode !== "manual"}
                     />
                   </div>
                 );
@@ -501,7 +541,7 @@ export const KanbanBoard = ({ username, boardId, refreshSignal }: KanbanBoardPro
                 <button
                   type="button"
                   onClick={handleAddColumn}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--stroke)] bg-white/50 text-xs font-semibold text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--stroke)] bg-white/50 text-xs font-medium text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
                 >
                   <PlusIcon />
                   Add Column

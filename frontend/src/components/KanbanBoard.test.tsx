@@ -4,20 +4,33 @@ import { KanbanBoard } from "@/components/KanbanBoard";
 import { AuthContext } from "@/components/AuthContext";
 import type { BoardData } from "@/lib/kanban";
 
+const isoDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const today = new Date();
+const yesterday = new Date(today);
+yesterday.setDate(today.getDate() - 1);
+const tomorrow = new Date(today);
+tomorrow.setDate(today.getDate() + 1);
+
 const testBoard: BoardData = {
   columns: [
-    { id: "col-backlog", title: "Backlog", cardIds: ["card-1", "card-2"] },
+    { id: "col-backlog", title: "Backlog", cardIds: ["card-2", "card-1"] },
     { id: "col-discovery", title: "Discovery", cardIds: ["card-3"] },
     { id: "col-progress", title: "In Progress", cardIds: ["card-4"] },
     { id: "col-review", title: "Review", cardIds: ["card-5"] },
     { id: "col-done", title: "Done", cardIds: ["card-6"] },
   ],
   cards: {
-    "card-1": { id: "card-1", title: "Task one", details: "Details" },
+    "card-1": { id: "card-1", title: "Task one", details: "Details", due_date: isoDate(today) },
     "card-2": { id: "card-2", title: "Task two", details: "Details" },
-    "card-3": { id: "card-3", title: "Task three", details: "Details" },
+    "card-3": { id: "card-3", title: "Task three", details: "Details", due_date: isoDate(tomorrow) },
     "card-4": { id: "card-4", title: "Task four", details: "Details" },
-    "card-5": { id: "card-5", title: "Task five", details: "Details" },
+    "card-5": { id: "card-5", title: "Task five", details: "Details", due_date: isoDate(yesterday) },
     "card-6": { id: "card-6", title: "Task six", details: "Details" },
   },
 };
@@ -126,5 +139,44 @@ describe("KanbanBoard", () => {
     expect(await screen.findByText(/board unavailable/i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /retry/i }));
     expect(await screen.findAllByTestId(/column-/i)).toHaveLength(5);
+  });
+
+  it("filters cards due today", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      if (String(input).includes("/members")) {
+        return okJsonResponse(membersResponse);
+      }
+      return okJsonResponse(namedBoardResponse(testBoard));
+    });
+
+    renderBoard();
+
+    expect(await screen.findAllByTestId(/column-/i)).toHaveLength(5);
+    await userEvent.click(screen.getByRole("button", { name: "Due today" }));
+
+    expect(screen.getByText("Task one")).toBeInTheDocument();
+    expect(screen.queryByText("Task three")).not.toBeInTheDocument();
+    expect(screen.queryByText("Task five")).not.toBeInTheDocument();
+  });
+
+  it("sorts cards in a column by due date", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      if (String(input).includes("/members")) {
+        return okJsonResponse(membersResponse);
+      }
+      return okJsonResponse(namedBoardResponse(testBoard));
+    });
+
+    renderBoard();
+
+    const backlogColumn = (await screen.findAllByTestId(/column-/i))[0];
+    await userEvent.selectOptions(screen.getByLabelText(/card sort/i), "due-date");
+
+    const orderedCards = within(backlogColumn)
+      .getAllByTestId(/card-/i)
+      .map((element) => element.getAttribute("data-testid"));
+
+    expect(orderedCards).toEqual(["card-card-1", "card-card-2"]);
+    expect(screen.getByText(/drag and drop is disabled/i)).toBeInTheDocument();
   });
 });

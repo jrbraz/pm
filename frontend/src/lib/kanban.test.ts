@@ -1,7 +1,14 @@
 import {
+  compareDueDates,
   createId,
+  formatDueDateChip,
   formatRelativeTime,
+  getEndOfWeekIso,
   getInitials,
+  getTodayIso,
+  isDueThisWeek,
+  isDueToday,
+  isOverdueDate,
   moveCard,
   type Column,
 } from "@/lib/kanban";
@@ -82,5 +89,43 @@ describe("formatRelativeTime", () => {
   it("shows days ago", () => {
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
     expect(formatRelativeTime(threeDaysAgo)).toBe("3d ago");
+  });
+});
+
+describe("due date helpers", () => {
+  const baseDate = new Date("2026-04-02T12:00:00");
+
+  it("computes today and end of week in local date format", () => {
+    expect(getTodayIso(baseDate)).toBe("2026-04-02");
+    expect(getEndOfWeekIso(baseDate)).toBe("2026-04-04");
+  });
+
+  it("detects due today", () => {
+    expect(isDueToday("2026-04-02", baseDate)).toBe(true);
+    expect(isDueToday("2026-04-03", baseDate)).toBe(false);
+  });
+
+  it("detects overdue dates", () => {
+    expect(isOverdueDate("2026-04-01", baseDate)).toBe(true);
+    expect(isOverdueDate("2026-04-02", baseDate)).toBe(false);
+  });
+
+  it("detects dates due this week", () => {
+    expect(isDueThisWeek("2026-04-03", baseDate)).toBe(true);
+    expect(isDueThisWeek("2026-04-08", baseDate)).toBe(false);
+  });
+
+  it("formats due-date chips by urgency", () => {
+    expect(formatDueDateChip("2026-04-01", baseDate)).toBe("Overdue");
+    expect(formatDueDateChip("2026-04-02", baseDate)).toBe("Due today");
+    expect(formatDueDateChip("2026-04-03", baseDate)).toBe("Due this week");
+  });
+
+  it("sorts due-dated cards ahead of undated cards", () => {
+    const dueLater = { id: "a", title: "Later", details: "", due_date: "2026-04-05" };
+    const dueSooner = { id: "b", title: "Sooner", details: "", due_date: "2026-04-03" };
+    const noDueDate = { id: "c", title: "No date", details: "" };
+    expect(compareDueDates(dueSooner, dueLater)).toBeLessThan(0);
+    expect(compareDueDates(dueLater, noDueDate)).toBeLessThan(0);
   });
 });

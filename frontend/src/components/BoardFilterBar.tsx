@@ -2,13 +2,20 @@
 
 import { PRIORITY_COLORS, PRIORITY_LABELS, type Priority } from "@/lib/kanban";
 
+export type DueDateFilter = "all" | "today" | "week" | "overdue";
+export type CardSortMode = "manual" | "due-date";
+
 type BoardFilterBarProps = {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   filterPriority: Priority | null;
   onFilterPriorityChange: (priority: Priority | null) => void;
+  filterDueDate: DueDateFilter;
+  onFilterDueDateChange: (filter: DueDateFilter) => void;
   filterLabel: string;
   onFilterLabelChange: (label: string) => void;
+  sortMode: CardSortMode;
+  onSortModeChange: (sortMode: CardSortMode) => void;
   allLabels: string[];
   hasActiveFilter: boolean;
   onClearFilters: () => void;
@@ -21,8 +28,12 @@ export const BoardFilterBar = ({
   onSearchChange,
   filterPriority,
   onFilterPriorityChange,
+  filterDueDate,
+  onFilterDueDateChange,
   filterLabel,
   onFilterLabelChange,
+  sortMode,
+  onSortModeChange,
   allLabels,
   hasActiveFilter,
   onClearFilters,
@@ -72,6 +83,31 @@ export const BoardFilterBar = ({
         ))}
       </div>
 
+      <div className="flex items-center gap-1">
+        {[
+          { value: "today", label: "Due today" },
+          { value: "week", label: "Due this week" },
+          { value: "overdue", label: "Overdue" },
+        ].map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() =>
+              onFilterDueDateChange(
+                filterDueDate === option.value ? "all" : (option.value as DueDateFilter)
+              )
+            }
+            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold transition ${
+              filterDueDate === option.value
+                ? "border-[var(--primary-blue)] bg-[var(--primary-blue)]/10 text-[var(--primary-blue)]"
+                : "border-[var(--stroke)] text-[var(--gray-text)] hover:text-[var(--navy-dark)]"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
       {allLabels.length > 0 && (
         <select
           value={filterLabel}
@@ -84,6 +120,16 @@ export const BoardFilterBar = ({
           ))}
         </select>
       )}
+
+      <select
+        aria-label="Card sort"
+        value={sortMode}
+        onChange={(e) => onSortModeChange(e.target.value as CardSortMode)}
+        className="rounded-xl border border-[var(--stroke)] bg-white px-2 py-1.5 text-xs text-[var(--navy-dark)] outline-none focus:border-[var(--primary-blue)]"
+      >
+        <option value="manual">Manual order</option>
+        <option value="due-date">Due date</option>
+      </select>
 
       {hasActiveFilter && (
         <button

@@ -2,27 +2,43 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import clsx from "clsx";
 import type { Card } from "@/lib/kanban";
-import { PRIORITY_COLORS, PRIORITY_LABELS, getInitials } from "@/lib/kanban";
+import {
+  PRIORITY_COLORS,
+  PRIORITY_LABELS,
+  formatDueDateChip,
+  getInitials,
+  isDueThisWeek,
+  isDueToday,
+  isOverdueDate,
+} from "@/lib/kanban";
 
 type KanbanCardProps = {
   card: Card;
   onDelete: (cardId: string) => void;
   onEdit: (card: Card) => void;
   onDuplicate: (card: Card) => void;
+  dragDisabled?: boolean;
 };
 
-export const KanbanCard = ({ card, onDelete, onEdit, onDuplicate }: KanbanCardProps) => {
+export const KanbanCard = ({
+  card,
+  onDelete,
+  onEdit,
+  onDuplicate,
+  dragDisabled = false,
+}: KanbanCardProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: card.id });
+    useSortable({ id: card.id, disabled: dragDisabled });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
-  const isOverdue =
-    card.due_date &&
-    new Date(card.due_date) < new Date(new Date().toISOString().split("T")[0]);
+  const isOverdue = isOverdueDate(card.due_date);
+  const isToday = isDueToday(card.due_date);
+  const isThisWeek = !isToday && isDueThisWeek(card.due_date);
+  const dueDateChip = formatDueDateChip(card.due_date);
 
   const checklist = card.checklist ?? [];
   const checklistTotal = checklist.length;
@@ -36,8 +52,11 @@ export const KanbanCard = ({ card, onDelete, onEdit, onDuplicate }: KanbanCardPr
       ref={setNodeRef}
       style={style}
       className={clsx(
-        "group rounded-2xl border border-transparent bg-white px-3 py-3 shadow-[0_2px_8px_rgba(3,33,71,0.07)]",
+        "group rounded-2xl border bg-white px-3 py-3 shadow-[0_2px_8px_rgba(3,33,71,0.07)]",
         "cursor-pointer transition-all duration-150 hover:border-[var(--stroke)] hover:shadow-[0_4px_12px_rgba(3,33,71,0.1)]",
+        isOverdue
+          ? "border-red-200 bg-red-50/40 shadow-[0_4px_14px_rgba(229,62,62,0.08)]"
+          : "border-transparent",
         isDragging && "opacity-60 shadow-[0_18px_32px_rgba(3,33,71,0.16)]"
       )}
       data-testid={`card-${card.id}`}
@@ -46,9 +65,15 @@ export const KanbanCard = ({ card, onDelete, onEdit, onDuplicate }: KanbanCardPr
       <div className="flex items-start gap-2">
         <button
           type="button"
-          className="mt-0.5 shrink-0 cursor-grab touch-none text-[var(--gray-text)] opacity-0 transition group-hover:opacity-40 active:cursor-grabbing"
+          className={clsx(
+            "mt-0.5 shrink-0 touch-none text-[var(--gray-text)] transition",
+            dragDisabled
+              ? "cursor-not-allowed opacity-20"
+              : "cursor-grab opacity-0 group-hover:opacity-40 active:cursor-grabbing"
+          )}
           aria-label="Drag card"
           onClick={(e) => e.stopPropagation()}
+          disabled={dragDisabled}
           {...attributes}
           {...listeners}
         >
@@ -106,14 +131,19 @@ export const KanbanCard = ({ card, onDelete, onEdit, onDuplicate }: KanbanCardPr
                 className={clsx(
                   "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
                   isOverdue
-                    ? "bg-red-50 text-red-500"
+                    ? "bg-red-100 text-red-600"
+                    : isToday
+                    ? "bg-[var(--accent-yellow)]/15 text-[#a66f00]"
+                    : isThisWeek
+                    ? "bg-[var(--primary-blue)]/12 text-[var(--primary-blue)]"
                     : "bg-[var(--stroke)] text-[var(--gray-text)]"
                 )}
+                title={card.due_date}
               >
                 <svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M5 .5a.5.5 0 0 1 .5.5V2h5V1a.5.5 0 0 1 1 0v1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h1V1A.5.5 0 0 1 5 .5zm-3 5v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6H2z" />
                 </svg>
-                {card.due_date}
+                {dueDateChip}
               </span>
             )}
             {hasChecklist && (

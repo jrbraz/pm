@@ -86,6 +86,13 @@ export type DashboardData = {
   recent_activity: ActivityEntry[];
 };
 
+const formatDateIso = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const isColumnId = (columns: Column[], id: string) =>
   columns.some((column) => column.id === id);
 
@@ -179,6 +186,64 @@ export const moveCard = (
 export const createId = (prefix: string) => {
   const uuid = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
   return `${prefix}-${uuid}`;
+};
+
+export const getTodayIso = (now: Date = new Date()): string => formatDateIso(now);
+
+export const getEndOfWeekIso = (now: Date = new Date()): string => {
+  const endOfWeek = new Date(now);
+  endOfWeek.setDate(now.getDate() + (6 - now.getDay()));
+  return formatDateIso(endOfWeek);
+};
+
+export const isDueToday = (
+  dueDate: string | null | undefined,
+  now: Date = new Date()
+): boolean => {
+  if (!dueDate) return false;
+  return dueDate === getTodayIso(now);
+};
+
+export const isOverdueDate = (
+  dueDate: string | null | undefined,
+  now: Date = new Date()
+): boolean => {
+  if (!dueDate) return false;
+  return dueDate < getTodayIso(now);
+};
+
+export const isDueThisWeek = (
+  dueDate: string | null | undefined,
+  now: Date = new Date()
+): boolean => {
+  if (!dueDate) return false;
+  const today = getTodayIso(now);
+  return dueDate >= today && dueDate <= getEndOfWeekIso(now);
+};
+
+export const compareDueDates = (left: Card, right: Card): number => {
+  const leftDue = left.due_date ?? "9999-12-31";
+  const rightDue = right.due_date ?? "9999-12-31";
+
+  if (leftDue !== rightDue) {
+    return leftDue.localeCompare(rightDue);
+  }
+
+  return left.title.localeCompare(right.title);
+};
+
+export const formatDueDateChip = (
+  dueDate: string | null | undefined,
+  now: Date = new Date()
+): string => {
+  if (!dueDate) return "";
+  if (isOverdueDate(dueDate, now)) return "Overdue";
+  if (isDueToday(dueDate, now)) return "Due today";
+  if (isDueThisWeek(dueDate, now)) return "Due this week";
+
+  const parsed = new Date(`${dueDate}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return dueDate;
+  return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 };
 
 export const PRIORITY_COLORS: Record<Priority, string> = {
