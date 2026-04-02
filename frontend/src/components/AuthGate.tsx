@@ -205,12 +205,16 @@ export const AuthGate = () => {
             onSelectBoard={setActiveBoardId}
           />
 
-          <div className="mt-auto px-2 pt-4">
+          <div className="mt-auto border-t border-[var(--stroke)] px-2 pt-3 pb-2">
             <button
               type="button"
               onClick={() => void handleLogout()}
-              className="w-full rounded-lg border border-[var(--stroke)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--surface)] px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)] transition hover:bg-red-50 hover:text-red-500"
             >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M6 12.5a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v2a.5.5 0 0 1-1 0v-2A1.5 1.5 0 0 1 6.5 2h8A1.5 1.5 0 0 1 16 3.5v9a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 12.5v-2a.5.5 0 0 1 1 0v2z"/>
+                <path d="M.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L1.707 7.5H10.5a.5.5 0 0 1 0 1H1.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3z"/>
+              </svg>
               Log out
             </button>
           </div>
